@@ -13,7 +13,7 @@ To set up the repository:
 ### IM2LATEX-100K-HANDWRITTEN Dataset
 
 To download the dataset:
- - Navigate to http://lstm.seas.harvard.edu/LaTeX/data/
+ - Navigate to http://lstm.seas.harvard.edu/latex/data/
  - Click the link labelled `IM2LATEX-100K-HANDWRITTEN.tgz (processed images, unprocessed formulas, training, validation and test set)`
  - Download to unzip such that all files/folders are directly in `Written2LaTeX/data`
 - There should be 5 files and 1 folder directly in `Written2LaTeX/data`:
