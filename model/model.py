@@ -11,9 +11,11 @@ INIT = 1e-2
 
 
 class Im2LatexModel(nn.Module):
-    def __init__(self, out_size, emb_size, dec_rnn_h,
-                 enc_out_dim=512,  n_layer=1,
-                 add_pos_feat=False, dropout=0.):
+    def __init__(self, out_size, emb_size, \
+        enc_rnn_h, dec_rnn_h, \
+        enc_out_dim=512,  n_layer=1, \
+        add_pos_feat=False, dropout=0.):
+
         super(Im2LatexModel, self).__init__()
 
         self.cnn_encoder = nn.Sequential(
@@ -34,6 +36,46 @@ class Im2LatexModel(nn.Module):
             nn.Conv2d(256, enc_out_dim, 3, 1, 0),
             nn.ReLU()
         )
+
+        """
+        c:512, k:(3,3), s:(1,1), p:(0,0), bn -
+        c:512, k:(3,3), s:(1,1), p:(1,1), bn po:(1,2), s:(1,2), p:(0,0)
+        c:256, k:(3,3), s:(1,1), p:(1,1) po:(2,1), s:(2,1), p(0,0)
+        c:256, k:(3,3), s:(1,1), p:(1,1), bn -
+        c:128, k:(3,3), s:(1,1), p:(1,1) po:(2,2), s:(2,2), p:(0,0)
+        c:64, k:(3,3), s:(1,1), p:(1,1) po:(2,2), s:(2,2), p(2,2)
+        """
+
+        """
+        self.cnn_encoder = nn.Sequential(
+            nn.Conv2d(1, 512, kernel_size=(3, 3), stride=(1, 1), padding=(0, 0)),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+
+            nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.MaxPool2d((1, 2), stride=(1, 2), padding=(0, 0)),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+
+            nn.Conv2d(512, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.MaxPool2d((2, 1), stride=(2, 1), padding=(0, 0)),
+            nn.ReLU(),
+
+            nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+
+            nn.Conv2d(256, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.MaxPool2d((2, 2), stride=(2, 2), padding=(0, 0)),
+            nn.ReLU(),
+
+            nn.Conv2d(128, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.MaxPool2d((2, 2), stride=(2, 2), padding=(0, 0)),
+            nn.ReLU(),
+        )
+        """
+
+        self.row_encoder = nn.LSTM(enc_out_dim, enc_rnn_h, bidirectional=True, batch_first=True)
 
         self.rnn_decoder = nn.LSTMCell(dec_rnn_h+emb_size, dec_rnn_h)
         self.embedding = nn.Embedding(out_size, emb_size)
@@ -85,11 +127,36 @@ class Im2LatexModel(nn.Module):
     def encode(self, imgs):
         encoded_imgs = self.cnn_encoder(imgs)  # [B, 512, H', W']
         encoded_imgs = encoded_imgs.permute(0, 2, 3, 1)  # [B, H', W', 512]
-        B, H, W, _ = encoded_imgs.shape
-        encoded_imgs = encoded_imgs.contiguous().view(B, H*W, -1)
+
+        #print("encoded_imgs.shape", encoded_imgs.shape)
+
+        # ADD ROW ENCODER HERE
+        H = encoded_imgs.shape[1]
+        outputs = []
+        for h in range(H):
+            row_features = encoded_imgs[:, h, :, :] # [B, W', 512] - (batch, seq, feature)
+            #print("row_features.shape", row_features.shape)
+            output, h_n = self.row_encoder(row_features)
+
+            #print("output.shape", output.shape)
+
+            outputs.append(output)
+
+        row_encoded = torch.stack(outputs, dim=1)
+
+        # Row encoder positional embeddings?
+        # Initial hidden states?
+
+        #print("row_encoded.shape", row_encoded.shape)
+
+        B, H, W, _ = row_encoded.shape
+        row_encoded = row_encoded.contiguous().view(B, H*W, -1)
         if self.add_pos_feat:
-            encoded_imgs = add_positional_features(encoded_imgs)
-        return encoded_imgs
+            row_encoded = add_positional_features(row_encoded)
+
+        return row_encoded
+
+        #return encoded_imgs
 
     def step_decoding(self, dec_states, o_t, enc_out, tgt):
         """Runing one step decoding"""

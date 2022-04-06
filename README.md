@@ -15,8 +15,8 @@ To set up the repository:
 To download the dataset:
  - Navigate to http://lstm.seas.harvard.edu/LaTeX/data/
  - Click the link labelled `IM2LATEX-100K-HANDWRITTEN.tgz (processed images, unprocessed formulas, training, validation and test set)`
- - Download to unzip such that all files/folders are directly in `Written2LaTeX/data`
-- There should be 5 files and 1 folder directly in `Written2LaTeX/data`:
+ - Download to unzip such that all files/folders are directly in `/data`
+- There should be 5 files and 1 folder directly in `/data`:
     -  `images`, `formulas.lst`, `test.lst`, `train.lst`, `val.lst`
 
 To preprocess the data:

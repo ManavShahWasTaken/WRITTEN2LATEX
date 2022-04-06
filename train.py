@@ -1,3 +1,4 @@
+import os
 import argparse
 from functools import partial
 
@@ -21,6 +22,8 @@ def main():
     # model args
     parser.add_argument("--emb_dim", type=int,
                         default=80, help="Embedding size")
+    parser.add_argument("--enc_rnn_h", type=int, default=256,
+                        help="The hidden state of the row encoder RNN")
     parser.add_argument("--dec_rnn_h", type=int, default=512,
                         help="The hidden state of the decoder RNN")
     parser.add_argument("--data_path", type=str,
@@ -84,6 +87,12 @@ def main():
     use_cuda = True if args.cuda and torch.cuda.is_available() else False
     device = torch.device("cuda" if use_cuda else "cpu")
 
+    # Multi-processing doesn't function well with Windows OS
+    if os.name == 'nt':
+        num_workers = 0
+    else:
+        num_workers = 4
+
     # data loader
     print("Construct data loader...")
     train_loader = DataLoader(
@@ -91,19 +100,20 @@ def main():
         batch_size=args.batch_size,
         collate_fn=partial(collate_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
-        num_workers=4)
+        num_workers=num_workers)
     val_loader = DataLoader(
         Im2LatexDataset(args.data_path, 'validate', args.max_len),
         batch_size=args.batch_size,
         collate_fn=partial(collate_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
-        num_workers=4)
+        num_workers=num_workers)
 
     # construct model
     print("Construct model")
     vocab_size = len(vocab)
     model = Im2LatexModel(
-        vocab_size, args.emb_dim, args.dec_rnn_h,
+        vocab_size, args.emb_dim,
+        args.enc_rnn_h, args.dec_rnn_h,
         add_pos_feat=args.add_position_features,
         dropout=args.dropout
     )

@@ -55,6 +55,8 @@ def build_vocab(data_dir, min_count=10):
     print("Writing Vocab File in ", vocab_file)
     with open(vocab_file, 'wb') as w:
         pkl.dump(vocab, w)
+    
+    return vocab
 
 
 def load_vocab(data_dir):
@@ -70,3 +72,5 @@ if __name__ == "__main__":
                         default="./data/", help="The dataset's dir")
     args = parser.parse_args()
     vocab = build_vocab(args.data_path)
+
+    print(sorted(list(vocab.sign2id.keys())))
