@@ -6,6 +6,7 @@ from torch.nn.utils import clip_grad_norm_
 
 from utils import cal_loss, cal_epsilon
 
+from tqdm import tqdm
 
 class Trainer(object):
     def __init__(self, optimizer, model, lr_scheduler,
@@ -30,9 +31,10 @@ class Trainer(object):
         mes = "Epoch {}, step:{}/{} {:.2f}%, Loss:{:.4f}, Perplexity:{:.4f}"
 
         while self.epoch <= self.last_epoch:
-            self.model.train()
+            print('Epoch: {}'.format(self.epoch))
+            # self.model.train()
             losses = 0.0
-            for imgs, tgt4training, tgt4cal_loss in self.train_loader:
+            for imgs, tgt4training, tgt4cal_loss in tqdm(self.train_loader):
                 step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
                 losses += step_loss
 

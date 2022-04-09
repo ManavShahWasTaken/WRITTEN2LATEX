@@ -30,6 +30,8 @@ def preprocess(data_dir, split):
             formula = formulas[int(formula_id)]
             pair = (img_tensor, formula)
             pairs.append(pair)
+            import code
+            code.interact(local=locals())
         pairs.sort(key=img_size)
 
     out_file = join(data_dir, "{}.pkl".format(split))
@@ -38,7 +40,7 @@ def preprocess(data_dir, split):
 
 
 def img_size(pair):
-    img, formula = pair
+    img = pair[0]
     return tuple(img.size())
 
 

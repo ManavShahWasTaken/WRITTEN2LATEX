@@ -34,7 +34,7 @@ class Im2LatexModel(nn.Module):
             nn.Conv2d(256, enc_out_dim, 3, 1, 0),
             nn.ReLU()
         )
-
+        
         self.rnn_decoder = nn.LSTMCell(dec_rnn_h+emb_size, dec_rnn_h)
         self.embedding = nn.Embedding(out_size, emb_size)
 
