@@ -7,6 +7,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
+from torch.utils.tensorboard import SummaryWriter
+
 from model import Im2LatexModel, Trainer
 from utils import collate_fn, get_checkpoint
 from data import Im2LatexDataset
@@ -28,8 +30,7 @@ def main():
                         help="The hidden state of the decoder RNN")
     parser.add_argument("--data_path", type=str,
                         default="./data/", help="The dataset's dir")
-    parser.add_argument("--add_position_features", action='store_true',
-                        default=False, help="Use position embeddings or not")
+    
     # training args
     parser.add_argument("--max_len", type=int,
                         default=150, help="Max size of formula")
@@ -79,13 +80,14 @@ def main():
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
-
+    
     # Building vocab
     print("Load vocab...")
     vocab = load_vocab(args.data_path)
 
     use_cuda = True if args.cuda and torch.cuda.is_available() else False
     device = torch.device("cuda" if use_cuda else "cpu")
+    print("Device:", device)
 
     # Multi-processing doesn't function well with Windows OS
     if os.name == 'nt':
@@ -114,8 +116,7 @@ def main():
     model = Im2LatexModel(
         vocab_size, args.emb_dim,
         args.enc_rnn_h, args.dec_rnn_h,
-        add_pos_feat=args.add_position_features,
-        dropout=args.dropout
+        device, dropout=args.dropout
     )
     model = model.to(device)
     print("Model Settings:")
@@ -132,6 +133,8 @@ def main():
         verbose=True,
         min_lr=args.min_lr)
 
+    writer = SummaryWriter()
+    
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -141,12 +144,14 @@ def main():
         trainer = Trainer(optimizer, model, lr_scheduler,
                           train_loader, val_loader, args,
                           use_cuda=use_cuda,
-                          init_epoch=epoch, last_epoch=max_epoch)
+                          init_epoch=epoch, last_epoch=max_epoch,
+                          writer=writer)
     else:
         trainer = Trainer(optimizer, model, lr_scheduler,
                           train_loader, val_loader, args,
                           use_cuda=use_cuda,
-                          init_epoch=1, last_epoch=args.epoches)
+                          init_epoch=1, last_epoch=args.epoches,
+                          writer=writer)
     # begin training
     print('Beginning training...')
     trainer.train()

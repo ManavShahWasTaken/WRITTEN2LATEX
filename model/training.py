@@ -11,7 +11,8 @@ from tqdm import tqdm
 class Trainer(object):
     def __init__(self, optimizer, model, lr_scheduler,
                  train_loader, val_loader, args,
-                 use_cuda=True, init_epoch=1, last_epoch=15):
+                 use_cuda=True, init_epoch=1, last_epoch=15,
+                 writer=None):
 
         self.optimizer = optimizer
         self.model = model
@@ -26,6 +27,8 @@ class Trainer(object):
         self.last_epoch = last_epoch
         self.best_val_loss = 1e18
         self.device = torch.device("cuda" if use_cuda else "cpu")
+        
+        self.writer = writer
 
     def train(self):
         mes = "Epoch {}, step:{}/{} {:.2f}%, Loss:{:.4f}, Perplexity:{:.4f}"
@@ -48,11 +51,18 @@ class Trainer(object):
                         2**avg_loss
                     ))
                     losses = 0.0
-
+                    
             # one epoch Finished, calcute val loss
             val_loss = self.validate()
             self.lr_scheduler.step(val_loss)
 
+            if self.writer is not None:
+                loss = losses/self.step
+                self.writer.add_scalar("loss", loss, self.epoch)
+                self.writer.add_scalar("perplexity", 2**loss, self.epoch)
+                self.writer.add_scalar("val_loss", val_loss, self.epoch)
+                self.writer.add_scalar("val_perplexity", 2**val_loss, self.epoch)
+            
             self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
             self.epoch += 1
             self.step = 0
