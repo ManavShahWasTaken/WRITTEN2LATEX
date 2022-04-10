@@ -1,22 +1,77 @@
-
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 from torch.distributions.uniform import Uniform
 
+import code # DEBUGGING
+
 from .position_embedding import add_positional_features
 
 INIT = 1e-2
 
 
+def positionalencoding1d(d_model, length):
+    """
+    :param d_model: dimension of the model
+    :param length: length of positions
+    :return: length*d_model position matrix
+    """
+    if d_model % 2 != 0:
+        raise ValueError("Cannot use sin/cos positional encoding with "
+                         "odd dim (got dim={:d})".format(d_model))
+    pe = torch.zeros(length, d_model)
+    position = torch.arange(0, length).unsqueeze(1)
+    div_term = torch.exp((torch.arange(0, d_model, 2, dtype=torch.float) *
+                         -(math.log(10000.0) / d_model)))
+    pe[:, 0::2] = torch.sin(position.float() * div_term)
+    pe[:, 1::2] = torch.cos(position.float() * div_term)
+
+    return pe
+
+
+
 class Im2LatexModel(nn.Module):
     def __init__(self, out_size, emb_size, \
-        enc_rnn_h, dec_rnn_h, \
+        enc_rnn_h, dec_rnn_h, device, \
         enc_out_dim=512,  n_layer=1, \
-        add_pos_feat=False, dropout=0.):
+        dropout=0.):
 
         super(Im2LatexModel, self).__init__()
+        
+
+        
+        # === TODO === cnn_type: Which type of CNN to have - "paper" for paper version, or "new" for our implementation
+        # row_encoder: Whether to have the row encoder or not, if not, feed directly from CNN to decoder
+        # paper_emb: Fixed embeddings applied as the encoder initial hidden state
+        # new_emb: Embeddings applied to the output of the CNN or row encoder (depending on row_encoder)
+        
+        experiments = {
+            # EXPERIMENT 1: No row encoder, no embeddings
+            1: {"row_encoder": False, "paper_emb": False, "new_emb": False},
+            
+            # EXPERIMENT 2: No row encoder, new_emb
+            2: {"row_encoder": False, "paper_emb": False, "new_emb": True},
+            
+            # EXPERIMENT 3: Row encoder, no embeddings
+            3: {"row_encoder": True, "paper_emb": False, "new_emb": False},
+            
+            # EXPERIMENT 4: Row encoder, paper_emb - CLOSEST TO THE PAPER
+            4: {"row_encoder": True, "paper_emb": True, "new_emb": False},
+            
+            # EXPERIMENT 5: Row encoder, new_emb
+            5: {"row_encoder": True, "paper_emb": False, "new_emb": True},
+            
+            # EXPERIMENT 6: Row encoder, paper_emb, new_emb
+            6: {"row_encoder": True, "paper_emb": True, "new_emb": True},
+        }
+        
+        experiment = 4
+        self.experiment_dict = experiments[experiment]
+
+        
+        self.device = device
 
         self.cnn_encoder = nn.Sequential(
             nn.Conv2d(3, 64, 3, 1, 1),
@@ -75,6 +130,7 @@ class Im2LatexModel(nn.Module):
         )
         """
 
+        self.enc_rnn_h = enc_rnn_h
         self.row_encoder = nn.LSTM(enc_out_dim, enc_rnn_h, bidirectional=True, batch_first=True)
 
         self.rnn_decoder = nn.LSTMCell(dec_rnn_h+emb_size, dec_rnn_h)
@@ -93,7 +149,6 @@ class Im2LatexModel(nn.Module):
         self.W_3 = nn.Linear(dec_rnn_h+enc_out_dim, dec_rnn_h, bias=False)
         self.W_out = nn.Linear(dec_rnn_h, out_size, bias=False)
 
-        self.add_pos_feat = add_pos_feat
         self.dropout = nn.Dropout(p=dropout)
         self.uniform = Uniform(0, 1)
 
@@ -124,40 +179,50 @@ class Im2LatexModel(nn.Module):
         logits = torch.stack(logits, dim=1)  # [B, MAX_LEN, out_size]
         return logits
 
-    def encode(self, imgs):
-        encoded_imgs = self.cnn_encoder(imgs)  # [B, 512, H', W']
-        encoded_imgs = encoded_imgs.permute(0, 2, 3, 1)  # [B, H', W', 512]
+    def row_encoder_fn(self, encoded):
+        H = encoded.shape[1]
+        
+        if self.experiment_dict["paper_emb"]:
+            # Get positional embedding vectors for each row
+            h0s = positionalencoding1d(self.enc_rnn_h, H)
 
-        #print("encoded_imgs.shape", encoded_imgs.shape)
-
-        # ADD ROW ENCODER HERE
-        H = encoded_imgs.shape[1]
         outputs = []
         for h in range(H):
-            row_features = encoded_imgs[:, h, :, :] # [B, W', 512] - (batch, seq, feature)
-            #print("row_features.shape", row_features.shape)
-            output, h_n = self.row_encoder(row_features)
+            row_features = encoded[:, h, :, :] # [B, W', 512] - (batch, seq, feature)
 
-            #print("output.shape", output.shape)
+            if self.experiment_dict["paper_emb"]:
+                # First dim is 2 since bidirectional
+                h0 = h0s[h].unsqueeze(0).repeat(2, 1).unsqueeze(1) # [2, 1, enc_rnn_h]
+                c0 = torch.zeros(2, 1, self.enc_rnn_h) # [2, 1, enc_rnn_h]
+
+                output, h_n = self.row_encoder(row_features,
+                    (h0.to(self.device), c0.to(self.device)))
+            else:
+                output, h_n = self.row_encoder(row_features)
 
             outputs.append(output)
 
-        row_encoded = torch.stack(outputs, dim=1)
+        encoded = torch.stack(outputs, dim=1) # [B, H', W', 512]
+        
+        return encoded
+    
+    def encode(self, imgs):
+        encoded = self.cnn_encoder(imgs)  # [B, 512, H', W']
+        encoded = encoded.permute(0, 2, 3, 1)  # [B, H', W', 512]
+        
+        # Apply row encoder (leads to the same shape as encoded)
+        if self.experiment_dict["row_encoder"]:
+            encoded = self.row_encoder_fn(encoded)
 
-        # Row encoder positional embeddings?
-        # Initial hidden states?
+        B, H, W, _ = encoded.shape
+        encoded = encoded.contiguous().view(B, H*W, -1)
+        
+        if self.experiment_dict["new_emb"]:
+            encoded = add_positional_features(encoded)
+            
+        return encoded
 
-        #print("row_encoded.shape", row_encoded.shape)
-
-        B, H, W, _ = row_encoded.shape
-        row_encoded = row_encoded.contiguous().view(B, H*W, -1)
-        if self.add_pos_feat:
-            row_encoded = add_positional_features(row_encoded)
-
-        return row_encoded
-
-        #return encoded_imgs
-
+    
     def step_decoding(self, dec_states, o_t, enc_out, tgt):
         """Runing one step decoding"""
 
