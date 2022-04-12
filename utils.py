@@ -5,18 +5,19 @@ import torch
 import torch.nn.functional as F
 from torch.distributions.bernoulli import Bernoulli
 
-from build_vocab import PAD_TOKEN, UNK_TOKEN
+from model.model_transformer import Im2LatexModelTransformer
+
+from build_vocab import END_TOKEN, PAD_TOKEN, UNK_TOKEN, START_TOKEN
 
 
 def collate_fn(sign2id, batch):
-    # filter the pictures that have different weight or height
+    # filter the pictures that have different width or height
     size = batch[0][0].size()
     batch = [img_formula for img_formula in batch
              if img_formula[0].size() == size]
     # sort by the length of formula
     batch.sort(key=lambda img_formula: len(img_formula[1].split()),
                reverse=True)
-
     imgs, formulas = zip(*batch)
     formulas = [formula.split() for formula in formulas]
     # targets for training , begin with START_TOKEN
@@ -26,17 +27,62 @@ def collate_fn(sign2id, batch):
     imgs = torch.stack(imgs, dim=0)
     return imgs, tgt4training, tgt4cal_loss
 
+def generate_square_subsequent_mask(sz):
+    mask = (torch.triu(torch.ones((sz, sz))) == 1).transpose(0, 1)
+    mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+    return mask
 
-def formulas2tensor(formulas, sign2id):
+def create_mask(tgt):
+    tgt_seq_len = tgt.shape[1]
+
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    tgt_padding_mask = (tgt == PAD_TOKEN)
+    assert tgt_padding_mask.shape[0] == tgt.shape[0] # batch dim
+    assert tgt_padding_mask.shape[1] == tgt.shape[1] # target sequence dim
+
+    return tgt_mask, tgt_padding_mask
+
+def collate_transformer_fn(sign2id, batch):
+    max_seq_length = 0
+    h_max = 0
+    w_max = 0
+    formulas_train = []
+    formulas_loss = []
+    imgs = []
+
+    for image, formula in batch:
+        h_max = max(h_max, image.shape[1])
+        w_max = max(w_max, image.shape[2])
+        label = formula.split()
+        formulas_train.append(['<s>'] + label)
+        formulas_loss.append(label + ['<s>'])
+        max_seq_length = max(max_seq_length, len(label)+1)
+        imgs.append(image)
+        
+    targets_train = formulas2tensor(formulas_train, sign2id, max_len=max_seq_length)
+    targets_loss = formulas2tensor(formulas_loss, sign2id, max_len=max_seq_length)
+    images_tensor = []    
+    for image in imgs:
+        result = torch.zeros(3, h_max, w_max)
+        result[:, :image.shape[1], :image.shape[2]] = image
+        images_tensor.append(result)
+    
+    targets = (targets_train, targets_loss)
+    # target_mask, target_padding_mask = create_mask(targets)
+    return torch.stack(images_tensor, dim=0), targets # , target_padding_mask, target_mask
+
+def formulas2tensor(formulas, sign2id, max_len=None):
     """convert formula to tensor"""
-
     batch_size = len(formulas)
-    max_len = len(formulas[0])
+    if max_len is None:
+        max_len = len(formulas[0])
+    
     tensors = torch.ones(batch_size, max_len, dtype=torch.long) * PAD_TOKEN
     for i, formula in enumerate(formulas):
         for j, sign in enumerate(formula):
             tensors[i][j] = sign2id.get(sign, UNK_TOKEN)
     return tensors
+
 
 
 def add_start_token(formulas):
@@ -45,6 +91,9 @@ def add_start_token(formulas):
 
 def add_end_token(formulas):
     return [formula+['</s>'] for formula in formulas]
+
+def add_start_stop_token(formulas):
+    return [+formula+['</s>'] for formula in formulas]
 
 
 def count_parameters(model):
@@ -150,3 +199,24 @@ def cal_epsilon(k, step, method):
         return k/(k+math.exp(step/k))
     else:
         return 1.
+
+
+def greedy_decode(model: Im2LatexModelTransformer, imgs, max_len, device):
+    imgs = imgs.to(device)
+    memory = model.encode(image_batch=imgs)
+    ys = torch.ones(1, 1).fill_(START_TOKEN).type(torch.long).to(device)
+    for _ in range(max_len-1):
+        memory = memory.to(device)
+        tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
+        
+        out = model.decode(ys, memory, tgt_mask, ys==PAD_TOKEN)
+        # out = out.transpose(0, 1)
+        prob = (out[:, -1])
+        _, next_word = torch.max(prob, dim = 1)
+        next_word = next_word.item()
+
+        ys = torch.cat([ys, torch.ones(1, 1).type_as(imgs.data).fill_(next_word)], dim=0)
+        if next_word == END_TOKEN:
+            break
+    
+    return ys

@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from data import Im2LatexDataset
 from build_vocab import Vocab, load_vocab
-from utils import collate_fn
+from utils import collate_transformer_fn
 from model import LatexProducer, Im2LatexModel
 from model.score import score_files
 
@@ -50,7 +50,7 @@ def main():
     data_loader = DataLoader(
         Im2LatexDataset(args.data_path, args.split, args.max_len),
         batch_size=args.batch_size,
-        collate_fn=partial(collate_fn, vocab.sign2id),
+        collate_fn=partial(collate_transformer_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
         num_workers=4
     )
@@ -69,7 +69,7 @@ def main():
         model, vocab, max_len=args.max_len,
         use_cuda=use_cuda, beam_size=args.beam_size)
 
-    for imgs, tgt4training, tgt4cal_loss in tqdm(data_loader):
+    for imgs, (tgt4training, tgt4cal_loss) in tqdm(data_loader):
         try:
             reference = latex_producer._idx2formulas(tgt4cal_loss)
             results = latex_producer(imgs)
