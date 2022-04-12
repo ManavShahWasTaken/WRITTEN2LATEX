@@ -26,41 +26,45 @@ def main():
     # row_encoder: Whether to have the row encoder or not, if not, feed directly from CNN to decoder
     # paper_emb: Fixed embeddings applied as the encoder initial hidden state
     # new_emb: Embeddings applied to the output of the CNN or row encoder (depending on row_encoder)
-    experiments = {
-        # EXPERIMENT 1: No row encoder, no embeddings
-        1: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": False},
-
-        # EXPERIMENT 2: No row encoder, new_emb
-        2: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": True},
-
-        # EXPERIMENT 3: Row encoder, no embeddings
-        3: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": False},
-
+    experiments = {        
+        
         # EXPERIMENT 4: Row encoder, paper_emb - CLOSEST TO THE PAPER
-        4: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": False},
-
+        1: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": False},
+        
+        # EXPERIMENT 1: Transformer, 6+6 layers, use patching
+        2: {"use_transformer": True, "size": "small", "use_patches": True, "patch_size":2},
+        
         # EXPERIMENT 5: Row encoder, new_emb
-        5: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": True},
-
+        3: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": True},
+        
+        # EXPERIMENT 2: No row encoder, new_emb
+        4: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": True},
+        
+        # Transformer, 12 layers, use patching
+        5: {"use_transformer": True, "size": "small", "use_patches": False},
+        
+        # EXPERIMENT 3: Row encoder, no embeddings
+        6: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": False},
+        
+        # Transformer, 8+8 layers, No patching
+        7: {"use_transformer": True, "size": "medium", "use_patches": False},
+        
         # EXPERIMENT 6: Row encoder, paper_emb, new_emb
-        6: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": True},
-
-        # EXPERIMENT 7: Transformer, 12 layers, use patching
-        7: {"use_transformer": True, "size": "small", "use_patches": True, "patch_size":2},
+        8: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": True},
         
-        8: {"use_transformer": True, "size": "small", "use_patches": False},
-
-        9: {"use_transformer": True, "size": "medium", "use_patches": False},
-        
+        # EXPERIMENT 1: No row encoder, no embeddings
+        9: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": False},
+       
+        # Transformer, 12+12 layers, use patching
         10: {"use_transformer": True, "size": "large", "use_patches": True, "patch_size": 2},
 
+        # Transformer, 12+12 layers, use patching
         11: {"use_transformer": True, "size": "large", "use_patches": False}
-
     }
     # experiment args
     parser.add_argument("experiment", type=int, help="Specify an experiment")
 
-    # encoder model args
+    # LSTM encoder model args
     parser.add_argument("--emb_dim", type=int,
                         default=80, help="Embedding size")
     parser.add_argument("--enc_rnn_h", type=int, default=256,
@@ -71,7 +75,7 @@ def main():
                         default="./data/", help="The dataset's dir")
     
     
-     # transformer model args
+    # transformer model args
     parser.add_argument("--feat_size", type=int,
                         default=512, help="Feature_Embedding size")
     parser.add_argument("--encoder_nheads", type=int, default=8,
@@ -96,8 +100,6 @@ def main():
     parser.add_argument("--decoder_max_sequence_length", type=int, default=1024,
                         help="Max output sequence length expected for decoder output")
     
-    
-    
     # training args
     parser.add_argument("--max_len", type=int,
                         default=150, help="Max size of formula")
@@ -118,9 +120,7 @@ def main():
                         help="Base of Exponential decay for Schedule Sampling. "
                         "When sample method is Exponential deca;"
                         "Or a constant in Inverse sigmoid decay Equation. "
-                        "See details in https://arxiv.org/pdf/1506.03099.pdf"
-                        )
-
+                        "See details in https://arxiv.org/pdf/1506.03099.pdf")
     parser.add_argument("--lr_decay", type=float, default=0.5,
                         help="Learning Rate Decay Rate")
     parser.add_argument("--lr_patience", type=int, default=3,
@@ -141,7 +141,7 @@ def main():
         TrainTransformer(experiments=experiments, args=args)
     else:
         TrainLSTMEncoder(experiments=experiments, parser=parser)
-    
+
    
 def TrainTransformer(experiments, args):
     max_epoch = args.epoches
@@ -205,12 +205,6 @@ def TrainTransformer(experiments, args):
         args.__dict__.update({
             "use_patches": False})
 
-
-
-
-
-
-
     args.__dict__.update({"vocab_size": vocab_size})
     # config = Config(
     #     vocab_size=vocab_size,
@@ -272,7 +266,6 @@ def TrainTransformer(experiments, args):
 
 
 def TrainLSTMEncoder(experiments, args):
-    
     max_epoch = args.epoches
     from_check_point = args.from_check_point
     if from_check_point:
