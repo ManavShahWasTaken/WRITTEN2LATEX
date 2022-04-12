@@ -7,23 +7,23 @@ import math
 
 INIT = 1e-2
 
-class Config:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+# class Config:
+#     def __init__(self, **kwargs):
+#         self.__dict__.update(kwargs)
 
-config=Config(
-    feat_size=512,
-    encoder_nheads=8,
-    encoder_dim_feedforward=2048,
-    encoder_num_layers=6,
-    encoder_dropout=0.2,
-    encoder_max_sequence_length=1024,
-    decoder_nheads=8,
-    decoder_dim_feedforward=2048,
-    decoder_num_layers=8,
-    decoder_dropout=0.2,
-    decoder_max_sequence_length=1024
-)
+# config=Config(
+#     feat_size=512,
+#     encoder_nheads=8,
+#     encoder_dim_feedforward=2048,
+#     encoder_num_layers=6,
+#     encoder_dropout=0.2,
+#     encoder_max_sequence_length=1024,
+#     decoder_nheads=8,
+#     decoder_dim_feedforward=2048,
+#     decoder_num_layers=8,
+#     decoder_dropout=0.2,
+#     decoder_max_sequence_length=1024
+# )
 
 class PositionalEncoding(nn.Module):
     def __init__(self, config):
@@ -31,18 +31,27 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p=config.encoder_dropout)
 
         position = torch.arange(config.encoder_max_sequence_length).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, config.feat_size, 2) * (-math.log(10000.0) / config.feat_size))
-        pe = torch.zeros(config.encoder_max_sequence_length, 1, config.feat_size)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        div_term = torch.exp(torch.arange(0, config.feat_size, 2) * (-math.log(2000000.0) / config.feat_size))
+        pe = torch.zeros(1, config.encoder_max_sequence_length, config.feat_size)
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe)
 
-    def forward(self, x: Tensor) -> Tensor:
+
+    def forward(self, x: Tensor, width: int=None) -> Tensor:
         """
         Args:
-            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+            x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
-        x = x + self.pe[:x.size(0)]
+        if width is not None:
+            assert x.shape[1]%width==0
+            height = x.shape[1]//width
+            row_pos_encoding = self.pe[:, :width, :].repeat(1, height, 1) # repeat encoding for each row
+            row_pos_encoding = row_pos_encoding + torch.repeat_interleave(self.pe[:, :height, :], width, dim=1) # add encoding to differentiate each row
+            x = x + (row_pos_encoding/2)
+            return self.dropout(x)
+        else:
+            x = x + self.pe[:, :x.size(1), :]
         return self.dropout(x)
     
 class Idx_to_embedding(nn.Module):
@@ -86,8 +95,8 @@ class LatexTransformer(nn.Module):
         logits = self.decode(trg, memory, tgt_mask, tgt_padding_mask)
         return logits 
     
-    def encode(self, src: Tensor, src_mask: Tensor):
-        src_emb = self.positional_encoding(src)
+    def encode(self, src: Tensor, src_mask: Tensor=None, width=None):
+        src_emb = self.positional_encoding(src, width=width)
         return self.transformer_encoder(src_emb, None, None)
     
     def decode(self, target: Tensor, memory: Tensor, target_mask: Tensor, target_padding_mask: Tensor):
@@ -121,6 +130,19 @@ class Im2LatexModelTransformer(nn.Module):
             nn.ReLU()
         )
 
+        
+        self.use_patches = config.use_patches
+        if config.use_patches:
+            self.patch_size=config.patch_size
+            self.patcher = nn.Conv2d(
+                in_channels=config.feat_size,
+                out_channels = config.feat_size,
+                kernel_size=config.patch_size,
+                stride=config.patch_size,
+            )
+        else:
+            self.patcher = nn.Identity()  
+
         self.transformer = LatexTransformer(config)
 
     def encode(self, image_batch: Tensor):
@@ -128,9 +150,28 @@ class Im2LatexModelTransformer(nn.Module):
         input: Batch of images
         output: Batch x (k) x feat_size
         """
-        cnn_encoded = self.cnn_encoder(image_batch).permute(0, 2, 3, 1) # batch, H, W, feat_size
+        temp = self.cnn_encoder(image_batch)
+        change = False
+        
+        if self.use_patches:
+            shape = list(temp.shape)
+            if shape[2]%self.patch_size != 0:
+                change=True
+                shape[2] += shape[2]%self.patch_size
+            if shape[3]%self.patch_size != 0:
+                change=True
+                shape[3] += shape[3]%self.patch_size
+        
+        if change:
+            padding = torch.zeros(tuple(shape), device=image_batch.device)
+            padding[:, :, :temp.shape[2], :temp.shape[3]] = temp
+            temp = padding
+        
+        cnn_encoded = self.patcher(temp).permute(0, 2, 3, 1) # batch, H, W, feat_size
+
+        width = cnn_encoded.shape[2]
         cnn_encoded = cnn_encoded.reshape(cnn_encoded.shape[0], cnn_encoded.shape[1] * cnn_encoded.shape[2], self.config.feat_size)
-        transformed = self.transformer.encode(cnn_encoded, src_mask=None) # encode with positional embeddings
+        transformed = self.transformer.encode(cnn_encoded, src_mask=None, width=width) # encode with positional embeddings
         return transformed
     
     def decode(self, target, memory, target_mask, target_padding_mask):
@@ -145,20 +186,20 @@ class Im2LatexModelTransformer(nn.Module):
         logits = self.decode(target=targets, memory=memory, target_mask=target_mask, target_padding_mask=target_padding_mask)
         return logits 
         
-if __name__ == '__main__':
-    config.vocab_size=353
-    model = Im2LatexModelTransformer(config)
-    batch_size = 8
-    seq_len = 40
-    h = 30
-    w = 400
-    c = 3
-    imgs = torch.ones(batch_size, c, h, w)
-    tgt = torch.ones(batch_size, seq_len)
-    mask = (torch.triu(torch.ones((seq_len, seq_len))) == 1).transpose(0, 1)
-    mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-    tgt_padding = tgt == 0
-    x = model(imgs, tgt, mask, tgt_padding)
-    import code
-    code.interact(local=locals())
+# if __name__ == '__main__':
+#     config.vocab_size=353
+#     model = Im2LatexModelTransformer(config)
+#     batch_size = 8
+#     seq_len = 40
+#     h = 30
+#     w = 400
+#     c = 3
+#     imgs = torch.ones(batch_size, c, h, w)
+#     tgt = torch.ones(batch_size, seq_len)
+#     mask = (torch.triu(torch.ones((seq_len, seq_len))) == 1).transpose(0, 1)
+#     mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+#     tgt_padding = tgt == 0
+#     x = model(imgs, tgt, mask, tgt_padding)
+#     import code
+#     code.interact(local=locals())
     

@@ -102,7 +102,7 @@ def main():
     torch.cuda.manual_seed(args.seed)
     
     # Building vocab
-    print("Load vocab...")
+    print("Loading vocab...")
     vocab = load_vocab(args.data_path)
 
     use_cuda = True if args.cuda and torch.cuda.is_available() else False
@@ -158,8 +158,6 @@ def main():
     print("Model Summary:")
     print(model)
 
-    import code
-    code.interact(local=locals())
     # construct optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
