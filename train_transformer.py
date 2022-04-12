@@ -18,7 +18,6 @@ from build_vocab import Vocab, load_vocab
 
 
 def main():
-
     # get args
     parser = argparse.ArgumentParser(description="Im2Latex Training Program")
     # parser.add_argument('--path', required=True, help='root of the model')
@@ -159,6 +158,8 @@ def main():
     print("Model Summary:")
     print(model)
 
+    import code
+    code.interact(local=locals())
     # construct optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -195,4 +196,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

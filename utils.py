@@ -5,7 +5,9 @@ import torch
 import torch.nn.functional as F
 from torch.distributions.bernoulli import Bernoulli
 
-from build_vocab import PAD_TOKEN, UNK_TOKEN
+from model.model_transformer import Im2LatexModelTransformer
+
+from build_vocab import END_TOKEN, PAD_TOKEN, UNK_TOKEN, START_TOKEN
 
 
 def collate_fn(sign2id, batch):
@@ -44,23 +46,28 @@ def collate_transformer_fn(sign2id, batch):
     max_seq_length = 0
     h_max = 0
     w_max = 0
-    formulas = []
+    formulas_train = []
+    formulas_loss = []
     imgs = []
+
     for image, formula in batch:
         h_max = max(h_max, image.shape[1])
         w_max = max(w_max, image.shape[2])
-        label = ['<s>'] + formula.split() + ['<s>']
-        formulas.append(label)
-        max_seq_length = max(max_seq_length, len(label)+2)
+        label = formula.split()
+        formulas_train.append(['<s>'] + label)
+        formulas_loss.append(label + ['<s>'])
+        max_seq_length = max(max_seq_length, len(label)+1)
         imgs.append(image)
         
-    targets = formulas2tensor(formulas, sign2id, max_len=max_seq_length)
+    targets_train = formulas2tensor(formulas_train, sign2id, max_len=max_seq_length)
+    targets_loss = formulas2tensor(formulas_loss, sign2id, max_len=max_seq_length)
     images_tensor = []    
     for image in imgs:
         result = torch.zeros(3, h_max, w_max)
         result[:, :image.shape[1], :image.shape[2]] = image
         images_tensor.append(result)
     
+    targets = (targets_train, targets_loss)
     # target_mask, target_padding_mask = create_mask(targets)
     return torch.stack(images_tensor, dim=0), targets # , target_padding_mask, target_mask
 
@@ -146,13 +153,6 @@ def cal_loss(logits, targets):
     loss = F.nll_loss(logits, targets)
     return loss
 
-def cal_loss_transformer(logits, target):
-    import code
-    code.interact(local=locals())
-    logits_reshaped = logits.reshape(-1, logits.shape[-1])
-    target_reshapes = target.reshape()
-
-
 
 def get_checkpoint(ckpt_dir):
     """return full path if there is ckpt in ckpt_dir else None"""
@@ -199,3 +199,24 @@ def cal_epsilon(k, step, method):
         return k/(k+math.exp(step/k))
     else:
         return 1.
+
+
+def greedy_decode(model: Im2LatexModelTransformer, imgs, max_len, device):
+    imgs = imgs.to(device)
+    memory = model.encode(image_batch=imgs)
+    ys = torch.ones(1, 1).fill_(START_TOKEN).type(torch.long).to(device)
+    for _ in range(max_len-1):
+        memory = memory.to(device)
+        tgt_mask = (generate_square_subsequent_mask(ys.size(0)).type(torch.bool)).to(device)
+        
+        out = model.decode(ys, memory, tgt_mask, ys==PAD_TOKEN)
+        # out = out.transpose(0, 1)
+        prob = (out[:, -1])
+        _, next_word = torch.max(prob, dim = 1)
+        next_word = next_word.item()
+
+        ys = torch.cat([ys, torch.ones(1, 1).type_as(imgs.data).fill_(next_word)], dim=0)
+        if next_word == END_TOKEN:
+            break
+    
+    return ys

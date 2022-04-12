@@ -3,7 +3,6 @@ import torch
 from build_vocab import END_TOKEN, PAD_TOKEN, START_TOKEN
 from .beam_search import BeamSearch
 
-
 class LatexProducer(object):
     """
     Model wrapper, implementing batch greedy decoding and
@@ -34,6 +33,27 @@ class LatexProducer(object):
         else:
             results = self._batch_beam_search(imgs)
         return results
+
+    # def greedy_decode(model, src, src_mask, max_len, start_symbol):
+    #     src = src.to(device)
+    #     src_mask = src_mask.to(device)
+    #     memory = model.encode(src, src_mask)
+    #     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
+    #     for i in range(max_len-1):
+    #         memory = memory.to(device)
+    #         memory_mask = torch.zeros(ys.shape[0], memory.shape[0]).to(device).type(torch.bool)
+    #         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
+    #                                     .type(torch.bool)).to(device)
+    #         out = model.decode(ys, memory, tgt_mask)
+    #         out = out.transpose(0, 1)
+    #         prob = model.generator(out[:, -1])
+    #         _, next_word = torch.max(prob, dim = 1)
+    #         next_word = next_word.item()
+
+    #         ys = torch.cat([ys, torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
+    #         if next_word == END_TOKEN:
+    #             break
+    #     return ys
 
     def _greedy_decoding(self, imgs):
         imgs = imgs.to(self.device)

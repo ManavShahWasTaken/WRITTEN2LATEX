@@ -71,9 +71,12 @@ class Transformer_Trainer(object):
     def train_step(self, imgs, tgt):
         self.optimizer.zero_grad()
         imgs = imgs.to(self.device)
-        tgt = tgt.to(self.device)
-        input_tgt = tgt[:, :-1] # cannot use the last token for prediction
-        output_tgt = tgt[:, 1:] # cannot use the start token or calculation loss
+        input_tgt, output_tgt = tgt
+        input_tgt = input_tgt.to(self.device)
+        output_tgt = output_tgt.to(self.device)
+
+        # input_tgt = tgt[:, :-1] # cannot use the last token for prediction
+        # output_tgt = tgt[:, 1:] # cannot use the start token or calculation loss
 
         input_target_mask, input_target_padding_mask = create_mask(input_tgt)
         input_target_mask = input_target_mask.to(self.device)
@@ -104,9 +107,9 @@ class Transformer_Trainer(object):
         with torch.no_grad():
             for imgs, tgt in self.val_loader:
                 imgs = imgs.to(self.device)
-                input_tgt = tgt[:, :-1]
-                output_tgt = tgt[:, 1:]
-
+                input_tgt, output_tgt = tgt
+                input_tgt = input_tgt.to(self.device)
+                output_tgt = output_tgt.to(self.device)
                 input_target_mask, input_target_padding_mask = create_mask(input_tgt)
                 input_target_mask = input_target_mask.to(self.device)
                 input_target_padding_mask = input_target_padding_mask.to(self.device)
@@ -178,7 +181,6 @@ class Trainer(object):
             for imgs, tgt4training, tgt4cal_loss in tqdm(self.train_loader):
                 step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
                 losses += step_loss
-
                 # log message
                 if self.step % self.args.print_freq == 0:
                     avg_loss = losses / self.args.print_freq
@@ -190,7 +192,7 @@ class Trainer(object):
                     ))
                     losses = 0.0
                     
-            # one epoch Finished, calcute val loss
+            # one epoch Finished, calculate val loss
             val_loss = self.validate()
             self.lr_scheduler.step(val_loss)
 
@@ -207,8 +209,8 @@ class Trainer(object):
 
     def train_step(self, imgs, tgt4training, tgt4cal_loss):
         self.optimizer.zero_grad()
-
         imgs = imgs.to(self.device)
+        
         tgt4training = tgt4training.to(self.device)
         tgt4cal_loss = tgt4cal_loss.to(self.device)
         epsilon = cal_epsilon(
@@ -265,3 +267,6 @@ class Trainer(object):
             'epoch': self.epoch,
             'args': self.args
         }, save_path)
+        
+    
+
