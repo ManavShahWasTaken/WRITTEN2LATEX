@@ -21,6 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description="Im2Latex Training Program")
     # parser.add_argument('--path', required=True, help='root of the model')
 
+    # experiment args
+    parser.add_argument("experiment", type=int, help="Specify an experiment")
+    
     # model args
     parser.add_argument("--emb_dim", type=int,
                         default=80, help="Embedding size")
@@ -111,13 +114,39 @@ def main():
         num_workers=num_workers)
 
     # construct model
+    
+    # row_encoder: Whether to have the row encoder or not, if not, feed directly from CNN to decoder
+    # paper_emb: Fixed embeddings applied as the encoder initial hidden state
+    # new_emb: Embeddings applied to the output of the CNN or row encoder (depending on row_encoder)
+    experiments = {
+        # EXPERIMENT 1: No row encoder, no embeddings
+        1: {"row_encoder": False, "paper_emb": False, "new_emb": False},
+
+        # EXPERIMENT 2: No row encoder, new_emb
+        2: {"row_encoder": False, "paper_emb": False, "new_emb": True},
+
+        # EXPERIMENT 3: Row encoder, no embeddings
+        3: {"row_encoder": True, "paper_emb": False, "new_emb": False},
+
+        # EXPERIMENT 4: Row encoder, paper_emb - CLOSEST TO THE PAPER
+        4: {"row_encoder": True, "paper_emb": True, "new_emb": False},
+
+        # EXPERIMENT 5: Row encoder, new_emb
+        5: {"row_encoder": True, "paper_emb": False, "new_emb": True},
+
+        # EXPERIMENT 6: Row encoder, paper_emb, new_emb
+        6: {"row_encoder": True, "paper_emb": True, "new_emb": True},
+    }
+    
     print("Construct model")
     vocab_size = len(vocab)
     model = Im2LatexModel(
+        experiments[args.experiment],
         vocab_size, args.emb_dim,
         args.enc_rnn_h, args.dec_rnn_h,
-        device, dropout=args.dropout
+        device, dropout=args.dropout,
     )
+    
     model = model.to(device)
     print("Model Settings:")
     print(model)

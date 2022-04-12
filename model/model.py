@@ -33,44 +33,15 @@ def positionalencoding1d(d_model, length):
 
 
 class Im2LatexModel(nn.Module):
-    def __init__(self, out_size, emb_size, \
+    def __init__(self, experiment_dict, out_size, emb_size, \
         enc_rnn_h, dec_rnn_h, device, \
         enc_out_dim=512,  n_layer=1, \
         dropout=0.):
 
         super(Im2LatexModel, self).__init__()
         
+        self.experiment_dict = experiment_dict
 
-        
-        # === TODO === cnn_type: Which type of CNN to have - "paper" for paper version, or "new" for our implementation
-        # row_encoder: Whether to have the row encoder or not, if not, feed directly from CNN to decoder
-        # paper_emb: Fixed embeddings applied as the encoder initial hidden state
-        # new_emb: Embeddings applied to the output of the CNN or row encoder (depending on row_encoder)
-        
-        experiments = {
-            # EXPERIMENT 1: No row encoder, no embeddings
-            1: {"row_encoder": False, "paper_emb": False, "new_emb": False},
-            
-            # EXPERIMENT 2: No row encoder, new_emb
-            2: {"row_encoder": False, "paper_emb": False, "new_emb": True},
-            
-            # EXPERIMENT 3: Row encoder, no embeddings
-            3: {"row_encoder": True, "paper_emb": False, "new_emb": False},
-            
-            # EXPERIMENT 4: Row encoder, paper_emb - CLOSEST TO THE PAPER
-            4: {"row_encoder": True, "paper_emb": True, "new_emb": False},
-            
-            # EXPERIMENT 5: Row encoder, new_emb
-            5: {"row_encoder": True, "paper_emb": False, "new_emb": True},
-            
-            # EXPERIMENT 6: Row encoder, paper_emb, new_emb
-            6: {"row_encoder": True, "paper_emb": True, "new_emb": True},
-        }
-        
-        experiment = 4
-        self.experiment_dict = experiments[experiment]
-
-        
         self.device = device
 
         self.cnn_encoder = nn.Sequential(
