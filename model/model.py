@@ -163,6 +163,7 @@ class Im2LatexModel(nn.Module):
         """
         # encoding
         encoded_imgs = self.encode(imgs)  # [B, H*W, 512]
+        code.interact(local=locals())
         # init decoder's states
         dec_states, o_t = self.init_decoder(encoded_imgs)
         max_len = formulas.size(1)

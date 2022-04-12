@@ -9,14 +9,13 @@ from build_vocab import PAD_TOKEN, UNK_TOKEN
 
 
 def collate_fn(sign2id, batch):
-    # filter the pictures that have different weight or height
+    # filter the pictures that have different width or height
     size = batch[0][0].size()
     batch = [img_formula for img_formula in batch
              if img_formula[0].size() == size]
     # sort by the length of formula
     batch.sort(key=lambda img_formula: len(img_formula[1].split()),
                reverse=True)
-
     imgs, formulas = zip(*batch)
     formulas = [formula.split() for formula in formulas]
     # targets for training , begin with START_TOKEN
@@ -26,17 +25,57 @@ def collate_fn(sign2id, batch):
     imgs = torch.stack(imgs, dim=0)
     return imgs, tgt4training, tgt4cal_loss
 
+def generate_square_subsequent_mask(sz):
+    mask = (torch.triu(torch.ones((sz, sz))) == 1).transpose(0, 1)
+    mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+    return mask
 
-def formulas2tensor(formulas, sign2id):
+def create_mask(tgt):
+    tgt_seq_len = tgt.shape[1]
+
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    tgt_padding_mask = (tgt == PAD_TOKEN)
+    assert tgt_padding_mask.shape[0] == tgt.shape[0] # batch dim
+    assert tgt_padding_mask.shape[1] == tgt.shape[1] # target sequence dim
+
+    return tgt_mask, tgt_padding_mask
+
+def collate_transformer_fn(sign2id, batch):
+    max_seq_length = 0
+    h_max = 0
+    w_max = 0
+    formulas = []
+    imgs = []
+    for image, formula in batch:
+        h_max = max(h_max, image.shape[1])
+        w_max = max(w_max, image.shape[2])
+        label = ['<s>'] + formula.split() + ['<s>']
+        formulas.append(label)
+        max_seq_length = max(max_seq_length, len(label)+2)
+        imgs.append(image)
+        
+    targets = formulas2tensor(formulas, sign2id, max_len=max_seq_length)
+    images_tensor = []    
+    for image in imgs:
+        result = torch.zeros(3, h_max, w_max)
+        result[:, :image.shape[1], :image.shape[2]] = image
+        images_tensor.append(result)
+    
+    # target_mask, target_padding_mask = create_mask(targets)
+    return torch.stack(images_tensor, dim=0), targets # , target_padding_mask, target_mask
+
+def formulas2tensor(formulas, sign2id, max_len=None):
     """convert formula to tensor"""
-
     batch_size = len(formulas)
-    max_len = len(formulas[0])
+    if max_len is None:
+        max_len = len(formulas[0])
+    
     tensors = torch.ones(batch_size, max_len, dtype=torch.long) * PAD_TOKEN
     for i, formula in enumerate(formulas):
         for j, sign in enumerate(formula):
             tensors[i][j] = sign2id.get(sign, UNK_TOKEN)
     return tensors
+
 
 
 def add_start_token(formulas):
@@ -45,6 +84,9 @@ def add_start_token(formulas):
 
 def add_end_token(formulas):
     return [formula+['</s>'] for formula in formulas]
+
+def add_start_stop_token(formulas):
+    return [+formula+['</s>'] for formula in formulas]
 
 
 def count_parameters(model):
@@ -103,6 +145,13 @@ def cal_loss(logits, targets):
 
     loss = F.nll_loss(logits, targets)
     return loss
+
+def cal_loss_transformer(logits, target):
+    import code
+    code.interact(local=locals())
+    logits_reshaped = logits.reshape(-1, logits.shape[-1])
+    target_reshapes = target.reshape()
+
 
 
 def get_checkpoint(ckpt_dir):
