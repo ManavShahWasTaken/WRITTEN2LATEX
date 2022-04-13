@@ -15,7 +15,6 @@ from model.score import score_files
 
 
 def main():
-
     parser = argparse.ArgumentParser(description="Im2Latex Evaluating Program")
     parser.add_argument('--model_path', required=True,
                         help='path of the evaluated model')
@@ -82,7 +81,7 @@ def main():
     result_file.close()
     ref_file.close()
     score = score_files(args.result_path, args.ref_path)
-    print("beam search result:", score)
+    print("beam search result: ", score)
 
 
 if __name__ == "__main__":

@@ -140,7 +140,7 @@ def main():
     if experiments[args.experiment]["use_transformer"]:
         TrainTransformer(experiments=experiments, args=args)
     else:
-        TrainLSTMEncoder(experiments=experiments, parser=parser)
+        TrainLSTMEncoder(experiments=experiments, args=args)
 
    
 def TrainTransformer(experiments, args):
