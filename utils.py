@@ -84,7 +84,6 @@ def formulas2tensor(formulas, sign2id, max_len=None):
     return tensors
 
 
-
 def add_start_token(formulas):
     return [['<s>']+formula for formula in formulas]
 
@@ -92,8 +91,8 @@ def add_start_token(formulas):
 def add_end_token(formulas):
     return [formula+['</s>'] for formula in formulas]
 
-def add_start_stop_token(formulas):
-    return [+formula+['</s>'] for formula in formulas]
+# def add_start_stop_token(formulas):
+#     return [+formula+['</s>'] for formula in formulas]
 
 
 def count_parameters(model):

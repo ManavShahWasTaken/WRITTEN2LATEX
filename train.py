@@ -78,7 +78,9 @@ def main():
     }
     # experiment args
     parser.add_argument("experiment", type=int, help="Specify an experiment")
-
+    parser.add_argument("--debug", type=bool, default=False, help="debug mode")
+    
+    
     # LSTM encoder model args
     parser.add_argument("--emb_dim", type=int,
                         default=80, help="Embedding size")
@@ -116,8 +118,10 @@ def main():
                         help="Max output sequence length expected for decoder output")
     
     # training args
+    parser.add_argument("--use_augmentation", type=int,
+                        default=True, help="Max size of formula")
     parser.add_argument("--max_len", type=int,
-                        default=150, help="Max size of formula")
+                        default=200, help="Max size of formula")
     parser.add_argument("--dropout", type=float,
                         default=0., help="Dropout probility")
     parser.add_argument("--cuda", action='store_true',
@@ -184,16 +188,20 @@ def TrainTransformer(experiments, args):
     else:
         num_workers = 4
 
+    if args.use_augmentation:
+        print("using augmentation...")
     # data loader
-    print("Construct data loader...")
+    if args.debug:
+        print('Running in debug mode')
+    print("Construct transformer data loader...")
     train_loader = DataLoader(
-        Im2LatexDataset(args.data_path, 'train', args.max_len),
+        Im2LatexDataset(args.data_path,'test' if args.debug else 'train', args),
         batch_size=args.batch_size,
         collate_fn=partial(collate_transformer_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
         num_workers=num_workers)
     val_loader = DataLoader(
-        Im2LatexDataset(args.data_path, 'validate', args.max_len),
+        Im2LatexDataset(args.data_path, 'validate', args),
         batch_size=args.batch_size,
         collate_fn=partial(collate_transformer_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
@@ -203,12 +211,15 @@ def TrainTransformer(experiments, args):
     print("Constructing model: ")
     vocab_size = len(vocab)
     if experiments[args.experiment]['size'] == 'small':
+        print("Model type: small")
         args.encoder_num_layers = 6
         args.decoder_num_layers = 6
     elif experiments[args.experiment]['size'] == 'medium':
+        print("Model type: medium")
         args.encoder_num_layers = 8
         args.decoder_num_layers = 6
     elif experiments[args.experiment]['size'] == 'large':
+        print("Model type: large")
         args.encoder_num_layers = 12
         args.decoder_num_layers = 12
 
@@ -236,11 +247,6 @@ def TrainTransformer(experiments, args):
     #     decoder_max_sequence_length=1024
     # )
     model = Im2LatexModelTransformer(args)
-    # model = Im2LatexModel(
-    #     vocab_size, args.emb_dim,
-    #     args.enc_rnn_h, args.dec_rnn_h,
-    #     device, dropout=args.dropout
-    # )
     model = model.to(device)
     print("Model Summary:")
     print(model)
@@ -307,23 +313,27 @@ def TrainLSTMEncoder(experiments, args):
     else:
         num_workers = 4
 
+    if args.use_augmentation:
+        print("using augmentation...")
+
     # data loader
+    if args.debug:
+        print('Running in debug mode')
     print("Construct data loader...")
     train_loader = DataLoader(
-        Im2LatexDataset(args.data_path, 'train', args.max_len),
+        Im2LatexDataset(args.data_path, 'test' if args.debug else 'train', args),
         batch_size=args.batch_size,
         collate_fn=partial(collate_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
         num_workers=num_workers)
     val_loader = DataLoader(
-        Im2LatexDataset(args.data_path, 'validate', args.max_len),
+        Im2LatexDataset(args.data_path, 'validate', args),
         batch_size=args.batch_size,
         collate_fn=partial(collate_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
         num_workers=num_workers)
     
     # construct model
-
     print("Construct model")
     vocab_size = len(vocab)
     model = Im2LatexModel(

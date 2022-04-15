@@ -9,6 +9,9 @@ from utils import PAD_TOKEN
 
 from tqdm import tqdm
 
+import code # DEBUG TOOL
+
+
 
 class Trainer(object):
     def __init__(self, optimizer, model, lr_scheduler,
@@ -106,7 +109,6 @@ class TransformerTrainer(Trainer):
         self.optimizer.zero_grad()
         imgs = imgs.to(self.device)
         input_tgt, output_tgt = tgt # input tgt with without end token, output target without start token
-        
         input_tgt = input_tgt.to(self.device)
         output_tgt = output_tgt.to(self.device)
 
