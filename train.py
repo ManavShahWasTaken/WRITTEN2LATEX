@@ -9,12 +9,27 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from torch.utils.tensorboard import SummaryWriter
 
-from model import Im2LatexModel, Trainer
+from model import Im2LatexModel
+from model.training import LSTMTrainer, TransformerTrainer
 from model.model_transformer import Im2LatexModelTransformer
-from model.training import Transformer_Trainer
 from utils import collate_fn, collate_transformer_fn, get_checkpoint
 from data import Im2LatexDataset
 from build_vocab import Vocab, load_vocab
+
+
+def next_nonexistent_dir(d):
+    i = 0
+    d_new = d
+    while os.path.exists(d_new):
+        i += 1
+        d_new = '%s_%i' % (d, i)
+    return d_new
+
+def get_tensorboard_writer(experiment, verbose=True):
+    log_dir = next_nonexistent_dir("./runs/experiment{}".format(experiment))
+    if verbose:
+        print("\nLogging directory:", log_dir, "\n")
+    return SummaryWriter(log_dir=log_dir)
 
 
 def main():
@@ -240,7 +255,8 @@ def TrainTransformer(experiments, args):
         verbose=True,
         min_lr=args.min_lr)
 
-    writer = SummaryWriter()
+    
+    writer = get_tensorboard_writer(args.experiment)
     
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -248,15 +264,15 @@ def TrainTransformer(experiments, args):
         epoch = checkpoint['epoch']
         lr_scheduler.load_state_dict(checkpoint['lr_sche'])
         # init trainer from checkpoint
-        trainer = Transformer_Trainer(optimizer, model, lr_scheduler,
+        trainer = TransformerTrainer(optimizer, model, lr_scheduler,
                           train_loader, val_loader, args,
-                          use_cuda=use_cuda,
+                          device, use_cuda=use_cuda,
                           init_epoch=epoch, last_epoch=max_epoch,
                           writer=writer)
     else:
-        trainer = Transformer_Trainer(optimizer, model, lr_scheduler,
+        trainer = TransformerTrainer(optimizer, model, lr_scheduler,
                           train_loader, val_loader, args,
-                          use_cuda=use_cuda,
+                          device, use_cuda=use_cuda,
                           init_epoch=1, last_epoch=args.epoches,
                           writer=writer)
     # begin training
@@ -294,7 +310,7 @@ def TrainLSTMEncoder(experiments, args):
     # data loader
     print("Construct data loader...")
     train_loader = DataLoader(
-        Im2LatexDataset(args.data_path, 'test', args.max_len),
+        Im2LatexDataset(args.data_path, 'train', args.max_len),
         batch_size=args.batch_size,
         collate_fn=partial(collate_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,
@@ -332,23 +348,23 @@ def TrainLSTMEncoder(experiments, args):
         verbose=True,
         min_lr=args.min_lr)
 
-    writer = SummaryWriter()
-    
+    writer = get_tensorboard_writer(args.experiment)
+
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         lr_scheduler.load_state_dict(checkpoint['lr_sche'])
         # init trainer from checkpoint
-        trainer = Trainer(optimizer, model, lr_scheduler,
+        trainer = LSTMTrainer(optimizer, model, lr_scheduler,
                           train_loader, val_loader, args,
-                          use_cuda=use_cuda,
+                          device, use_cuda=use_cuda,
                           init_epoch=epoch, last_epoch=max_epoch,
                           writer=writer)
     else:
-        trainer = Trainer(optimizer, model, lr_scheduler,
+        trainer = LSTMTrainer(optimizer, model, lr_scheduler,
                           train_loader, val_loader, args,
-                          use_cuda=use_cuda,
+                          device, use_cuda=use_cuda,
                           init_epoch=1, last_epoch=args.epoches,
                           writer=writer)
     # begin training
