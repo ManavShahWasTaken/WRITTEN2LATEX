@@ -70,15 +70,12 @@ class LatexTransformer(nn.Module):
 
         self.tgt_to_emb = Idx_to_embedding(config)
 
-        encoder_layer = TransformerEncoderLayer(d_model=config.feat_size, nhead=config.encoder_nheads,
-                                                dim_feedforward=config.encoder_dim_feedforward, dropout=config.encoder_dropout, batch_first=True,
-                                                activation="gelu")
+        encoder_layer = TransformerEncoderLayer(d_model=config.feat_size, nhead=config.encoder_nheads, dim_feedforward=config.encoder_dim_feedforward,batch_first=True, dropout=config.encoder_dropout, activation="gelu")
         
         self.transformer_encoder = TransformerEncoder(encoder_layer, num_layers=config.encoder_num_layers)
 
         decoder_layer = TransformerDecoderLayer(d_model=config.feat_size, nhead=config.decoder_nheads,
-                                                dim_feedforward=config.decoder_dim_feedforward, dropout=config.decoder_dropout,
-                                                batch_first=True, activation="gelu")
+                                                dim_feedforward=config.decoder_dim_feedforward, batch_first=True, dropout=config.decoder_dropout, activation="gelu")
         
         self.transformer_decoder = TransformerDecoder(decoder_layer=decoder_layer, num_layers=config.decoder_num_layers)
 
