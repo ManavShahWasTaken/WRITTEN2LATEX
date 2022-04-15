@@ -187,7 +187,7 @@ def TrainTransformer(experiments, args):
     # data loader
     print("Construct data loader...")
     train_loader = DataLoader(
-        Im2LatexDataset(args.data_path, 'test', args.max_len),
+        Im2LatexDataset(args.data_path, 'train', args.max_len),
         batch_size=args.batch_size,
         collate_fn=partial(collate_transformer_fn, vocab.sign2id),
         pin_memory=True if use_cuda else False,

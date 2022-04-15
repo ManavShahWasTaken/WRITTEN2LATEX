@@ -5,6 +5,8 @@ from torch.nn import TransformerEncoderLayer, TransformerEncoder, TransformerDec
 from torch import Tensor
 import math
 
+import code # DEBUG make sure unused when deploying
+
 INIT = 1e-2
 
 # class Config:
@@ -52,6 +54,34 @@ class PositionalEncoding(nn.Module):
         else:
             x = x + self.pe[:, :x.size(1), :]
         return self.dropout(x)
+
+# class PositionalEncoding(nn.Module):
+#     def __init__(self, config):
+#         super(PositionalEncoding, self).__init__()
+#         self.dropout = nn.Dropout(p=config.encoder_dropout)
+
+#         position = torch.arange(config.encoder_max_sequence_length).unsqueeze(1)
+#         div_term = torch.exp(torch.arange(0, config.feat_size, 2) * (-math.log(2000000.0) / config.feat_size))
+#         pe = torch.zeros(config.encoder_max_sequence_length, 1, config.feat_size) # seq, batch_dim , feat
+#         pe[:, 0, 0::2] = torch.sin(position * div_term) 
+#         pe[:, 0, 1::2] = torch.cos(position * div_term)
+#         self.register_buffer('pe', pe)
+    
+#     def forward(self, x: Tensor, width: int=None) -> Tensor:
+#         """
+#         Args:
+#             x: Tensor, shape [seq_len, batch_size, embedding_dim]
+#         """
+#         if width is not None:
+#             assert x.shape[0]%width==0
+#             height = x.shape[0]//width 
+#             row_pos_encoding = self.pe[: width, :, :].repeat(height, 1, 1) # repeat encoding for each row
+#             row_pos_encoding = row_pos_encoding + torch.repeat_interleave(self.pe[:height, :, :], width, dim=0) # add encoding to differentiate each row
+#             x = x + (row_pos_encoding/2)
+#             return self.dropout(x)
+#         else:
+#             x = x + self.pe[:x.size(1), :, :]
+#         return self.dropout(x)
     
 class Idx_to_embedding(nn.Module):
     def __init__(self, config):
