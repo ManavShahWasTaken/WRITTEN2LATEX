@@ -244,6 +244,9 @@ class LSTMTrainer(Trainer):
         clip_grad_norm_(self.model.parameters(), self.args.clip)
         self.optimizer.step()
 
+        # gc.collect()
+        # torch.cuda.empty_cache()
+
         return loss.item()
 
     def validate(self):
