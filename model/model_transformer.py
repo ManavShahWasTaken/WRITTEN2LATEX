@@ -49,10 +49,13 @@ class PositionalEncoding(nn.Module):
             height = x.shape[1]//width
             row_pos_encoding = self.pe[:, :width, :].repeat(1, height, 1) # repeat encoding for each row
             row_pos_encoding = row_pos_encoding + torch.repeat_interleave(self.pe[:, :height, :], width, dim=1) # add encoding to differentiate each row
+            row_pos_encoding.requires_grad = False
             x = x + (row_pos_encoding/2)
             return self.dropout(x)
         else:
-            x = x + self.pe[:, :x.size(1), :]
+            enc = self.pe[:, :x.size(1), :]
+            enc.requires_grad = False
+            x = x + enc
         return self.dropout(x)
 
 # class PositionalEncoding(nn.Module):

@@ -266,8 +266,13 @@ def TrainTransformer(experiments, args):
     # )
     model = Im2LatexModelTransformer(args)
     model = model.to(device)
-    print("Model Summary:")
-    print(model)
+    mem_params = sum([param.nelement()*param.element_size() for param in model.parameters()])
+    mem_bufs = sum([buf.nelement()*buf.element_size() for buf in model.buffers()])
+    mem = mem_params + mem_bufs # in bytes
+    print("Model memory footprint: {}".format(mem))
+
+    # print("Model Summary:")
+    # print(model)
     # construct optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -277,8 +282,8 @@ def TrainTransformer(experiments, args):
         factor=args.lr_decay,
         patience=args.lr_patience,
         verbose=True,
-        min_lr=args.min_lr)
-
+        min_lr=args.min_lr
+    )
     
     writer = get_tensorboard_writer(args.experiment)
     

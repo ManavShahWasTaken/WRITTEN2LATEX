@@ -11,6 +11,9 @@ from tqdm import tqdm
 
 import code # DEBUG TOOL
 
+import torch
+import torchvision.models as models
+from torch.profiler import profile, record_function, ProfilerActivity
 
 
 class Trainer(object):
@@ -75,7 +78,7 @@ class TransformerTrainer(Trainer):
         mes = "Epoch {}, step:{}/{} {:.2f}%, Loss:{:.4f}, Perplexity:{:.4f}"
         while self.epoch <= self.last_epoch:
             print('Epoch: {}'.format(self.epoch))
-            self.model.train()
+            self.model.train() # switch to training mode
             losses = 0.0
             for imgs, tgt in tqdm(self.train_loader):
                 step_loss = self.train_step(imgs, tgt)
@@ -108,10 +111,16 @@ class TransformerTrainer(Trainer):
 
     def train_step(self, imgs, tgt):
         self.optimizer.zero_grad()
+        
         imgs = imgs.to(self.device)
+        imgs.requires_grad = False
         input_tgt, output_tgt = tgt # input tgt with without end token, output target without start token
+        
         input_tgt = input_tgt.to(self.device)
         output_tgt = output_tgt.to(self.device)
+
+        output_tgt.requires_grad = False
+        input_tgt.requires_grad = False
 
         # input_tgt = tgt[:, :-1] # cannot use the last token for prediction
         # output_tgt = tgt[:, 1:] # cannot use the start token or calculation loss
@@ -119,6 +128,10 @@ class TransformerTrainer(Trainer):
         input_target_mask, input_target_padding_mask = create_mask(input_tgt)
         input_target_mask = input_target_mask.to(self.device)
         input_target_padding_mask = input_target_padding_mask.to(self.device)
+
+        input_target_padding_mask.requires_grad = False
+        input_target_mask.requires_grad = False
+
         logits = self.model(imgs, input_tgt, input_target_mask, input_target_padding_mask)
 
         # calculate loss
@@ -129,7 +142,7 @@ class TransformerTrainer(Trainer):
         clip_grad_norm_(self.model.parameters(), self.args.clip)
         self.optimizer.step()
 
-        return loss.item()
+        return loss.item()              
 
     def calculate_loss(self, logits, target):
         logits_reshaped = logits.reshape(-1, logits.shape[-1])
@@ -151,7 +164,7 @@ class TransformerTrainer(Trainer):
                 input_target_padding_mask = input_target_padding_mask.to(self.device)
                 logits = self.model(imgs, input_tgt, input_target_mask, input_target_padding_mask)
                 loss = self.calculate_loss(logits, output_tgt)
-                val_total_loss += loss
+                val_total_loss += loss.item()
             
             avg_loss = val_total_loss / len(self.val_loader)
             print(mes.format(
@@ -160,7 +173,8 @@ class TransformerTrainer(Trainer):
         if avg_loss < self.best_val_loss:
             self.best_val_loss = avg_loss
             self.save_model('best_ckpt')
-        return avg_loss
+        
+        return avg_loss 
 
 
 
