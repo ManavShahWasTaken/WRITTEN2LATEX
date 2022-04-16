@@ -177,7 +177,6 @@ class LSTMTrainer(Trainer):
         
 
     def train(self):
-        DROPPED = 0
         mes = "Epoch {}, step:{}/{} {:.2f}%, Loss:{:.4f}, Perplexity:{:.4f}"
         while self.epoch <= self.last_epoch:
             print('Epoch: {}'.format(self.epoch))
@@ -197,9 +196,6 @@ class LSTMTrainer(Trainer):
                             2**avg_loss
                         ))
                         losses = 0.0
-                else:
-                    DROPPED += 1
-                    print("\n\nDROPPED {}\n\n".format(DROPPED))
   
             # Calculate val loss
             val_loss = self.validate()
