@@ -37,7 +37,7 @@ class PositionalEncoding(nn.Module):
         pe = torch.zeros(1, config.encoder_max_sequence_length, config.feat_size)
         pe[0, :, 0::2] = torch.sin(position * div_term)
         pe[0, :, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe)
+        self.register_buffer('pe', pe.detach())
     
     def forward(self, x: Tensor, width: int=None) -> Tensor:
         """
@@ -50,7 +50,7 @@ class PositionalEncoding(nn.Module):
             row_pos_encoding = self.pe[:, :width, :].repeat(1, height, 1) # repeat encoding for each row
             row_pos_encoding = row_pos_encoding + torch.repeat_interleave(self.pe[:, :height, :], width, dim=1) # add encoding to differentiate each row
             row_pos_encoding.requires_grad = False
-            x = x + (row_pos_encoding/2)
+            x = x + (row_pos_encoding/2).detach()
             return self.dropout(x)
         else:
             enc = self.pe[:, :x.size(1), :]

@@ -1,5 +1,6 @@
 import os
 import math
+from tkinter import image_names
 
 import torch
 import torch.nn.functional as F
@@ -66,10 +67,11 @@ def collate_transformer_fn(sign2id, batch):
         result = torch.zeros(3, h_max, w_max)
         result[:, :image.shape[1], :image.shape[2]] = image
         images_tensor.append(result)
-    
+    del imgs
     targets = (targets_train, targets_loss)
     # target_mask, target_padding_mask = create_mask(targets)
-    return torch.stack(images_tensor, dim=0), targets # , target_padding_mask, target_mask
+    image_tensor = torch.stack(images_tensor, dim=0)
+    return image_tensor, targets # , target_padding_mask, target_mask
 
 def formulas2tensor(formulas, sign2id, max_len=None):
     """convert formula to tensor"""

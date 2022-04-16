@@ -9,7 +9,10 @@ from utils import PAD_TOKEN
 
 from tqdm import tqdm
 
-import code # Debug tool
+#DEBUG:
+import code
+import torch
+from torch.profiler import profile, record_function, ProfilerActivity
 
 
 class Trainer(object):
@@ -105,44 +108,46 @@ class TransformerTrainer(Trainer):
             self.step = 0
 
     def train_step(self, imgs, tgt):
-        self.optimizer.zero_grad()
+        with profile(activities=[ProfilerActivity.CUDA], profile_memory=True, record_shapes=True) as prof:
+            self.optimizer.zero_grad()
+            
+            imgs = imgs.to(self.device)
+            imgs.requires_grad = False
+            input_tgt, output_tgt = tgt # input tgt with without end token, output target without start token
+            
+            input_tgt = input_tgt.to(self.device)
+            output_tgt = output_tgt.to(self.device)
+
+            output_tgt.requires_grad = False
+            input_tgt.requires_grad = False
+
+            # input_tgt = tgt[:, :-1] # cannot use the last token for prediction
+            # output_tgt = tgt[:, 1:] # cannot use the start token or calculation loss
+
+            input_target_mask, input_target_padding_mask = create_mask(input_tgt)
+            input_target_mask = input_target_mask.to(self.device)
+            input_target_padding_mask = input_target_padding_mask.to(self.device)
+
+            input_target_padding_mask.requires_grad = False
+            input_target_mask.requires_grad = False
+
+            logits = self.model(imgs, input_tgt, input_target_mask, input_target_padding_mask)
+
+            # calculate loss
+            loss = self.calculate_loss(logits, output_tgt)
+            self.step += 1
+            self.total_step += 1
+            loss.backward()
+            output_loss = loss.item()
+            del loss, logits, input_target_padding_mask, input_target_mask, imgs
+            clip_grad_norm_(self.model.parameters(), self.args.clip)
+            self.optimizer.step()
         
-        imgs = imgs.to(self.device)
-        imgs.requires_grad = False
-        input_tgt, output_tgt = tgt # input tgt with without end token, output target without start token
-        
-        input_tgt = input_tgt.to(self.device)
-        output_tgt = output_tgt.to(self.device)
-
-        output_tgt.requires_grad = False
-        input_tgt.requires_grad = False
-
-        # input_tgt = tgt[:, :-1] # cannot use the last token for prediction
-        # output_tgt = tgt[:, 1:] # cannot use the start token or calculation loss
-
-        input_target_mask, input_target_padding_mask = create_mask(input_tgt)
-        input_target_mask = input_target_mask.to(self.device)
-        input_target_padding_mask = input_target_padding_mask.to(self.device)
-
-        input_target_padding_mask.requires_grad = False
-        input_target_mask.requires_grad = False
-
-        logits = self.model(imgs, input_tgt, input_target_mask, input_target_padding_mask)
-
-        # calculate loss
-        loss = self.calculate_loss(logits, output_tgt)
-        self.step += 1
-        self.total_step += 1
-        loss.backward()
-        clip_grad_norm_(self.model.parameters(), self.args.clip)
-        self.optimizer.step()
-
-        return loss.item()              
+        print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
+        return output_loss              
 
     def calculate_loss(self, logits, target):
-        logits_reshaped = logits.reshape(-1, logits.shape[-1])
-        target_reshaped = target.reshape(-1)
-        return self.loss_fn(logits_reshaped, target_reshaped)
+        return self.loss_fn(logits.reshape(-1, logits.shape[-1]), target.reshape(-1))
 
     def validate(self):
         self.model.eval()
