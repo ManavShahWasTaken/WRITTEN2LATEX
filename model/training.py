@@ -10,7 +10,7 @@ from utils import PAD_TOKEN
 from tqdm import tqdm
 
 import code # Debug tool
-
+import gc # Debug tool
 
 class Trainer(object):
     def __init__(self, optimizer, model, lr_scheduler,
@@ -126,6 +126,9 @@ class TransformerTrainer(Trainer):
         loss.backward()
         clip_grad_norm_(self.model.parameters(), self.args.clip)
         self.optimizer.step()
+        
+        gc.collect()
+        torch.cuda.empty_cache()
 
         return loss.item()
 
@@ -227,6 +230,9 @@ class LSTMTrainer(Trainer):
         loss.backward()
         clip_grad_norm_(self.model.parameters(), self.args.clip)
         self.optimizer.step()
+
+        gc.collect()
+        torch.cuda.empty_cache()
 
         return loss.item()
 
