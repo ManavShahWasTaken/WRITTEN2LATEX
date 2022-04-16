@@ -119,7 +119,7 @@ def main():
                         help="Max output sequence length expected for decoder output")
     
     # training args
-    parser.add_argument("--use_augmentation", type=int,
+    parser.add_argument("--use_augmentation", type=bool,
                         default=True, help="Max size of formula")
     parser.add_argument("--max_len", type=int,
                         default=200, help="Max size of formula")
@@ -190,7 +190,8 @@ def TrainTransformer(experiments, args):
         num_workers = 4
 
     if args.use_augmentation:
-        print("using augmentation...")
+        print("Using data augmentation...")
+    
     # data loader
     if args.debug:
         print('Running in debug mode')
@@ -315,7 +316,7 @@ def TrainLSTMEncoder(experiments, args):
         num_workers = 4
 
     if args.use_augmentation:
-        print("using augmentation...")
+        print("Using data augmentation...")
 
     # data loader
     if args.debug:
