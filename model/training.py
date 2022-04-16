@@ -10,7 +10,6 @@ from utils import PAD_TOKEN
 from tqdm import tqdm
 
 import code # Debug tool
-import gc # Debug tool - Garbage collector
 
 
 class Trainer(object):
@@ -54,16 +53,6 @@ class Trainer(object):
             'epoch': self.epoch,
             'args': self.args
         }, save_path)
-    
-    
-    def gc_check(self):
-        print("\n\n GC CHECK \n\n")
-        for obj in gc.get_objects():
-            try:
-                if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                    print(type(obj), obj.size())
-            except:
-                pass
 
 
 
@@ -99,8 +88,6 @@ class TransformerTrainer(Trainer):
                         2**avg_loss
                     ))
                     losses = 0.0
-                
-                self.gc_check()
                     
             # Calculate val loss
             val_loss = self.validate()
@@ -207,8 +194,6 @@ class LSTMTrainer(Trainer):
                             2**avg_loss
                         ))
                         losses = 0.0
-
-                    self.gc_check()
   
             # Calculate val loss
             val_loss = self.validate()
