@@ -1,8 +1,8 @@
 from curses import keyname
 from os.path import join
 
-from torch.utils.data import Dataset
 import torch
+from torch.utils.data import Dataset
 import torchvision.transforms as T
 
 class Im2LatexDataset(Dataset):
@@ -17,7 +17,7 @@ class Im2LatexDataset(Dataset):
         self.split = split
         self.max_len = self.args.max_len
         self.pairs = self._load_pairs()
-        if self.args.use_augmentation:
+        if self.args.augment:
             self.transforms = torch.nn.Sequential(
                 T.ColorJitter(0.5, 0.5, 0.5, 0.5),
                 T.RandomInvert(p=0.5),
@@ -33,7 +33,7 @@ class Im2LatexDataset(Dataset):
         return pairs
 
     def __getitem__(self, index):
-        if self.args.use_augmentation:
+        if self.args.augment:
             img, formula = self.pairs[index]
             return (self.transforms(img), " ".join(formula.split()[:self.max_len]))
         else:
