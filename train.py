@@ -31,6 +31,17 @@ def get_tensorboard_writer(experiment, verbose=True):
         print("\nLogging directory:", log_dir, "\n")
     return SummaryWriter(log_dir=log_dir)
 
+def get_save_dir(dir, experiment, verbose=True):
+    if dir == "./ckpts":
+        ret_dir = next_nonexistent_dir("./ckpts/experiment{}".format(experiment))
+    else:
+        ret_dir = dir
+    
+    if verbose:
+        print("\nCheckpoint directory:", ret_dir, "\n")
+    return ret_dir
+        
+
 
 def main():
 
@@ -157,6 +168,14 @@ def main():
                         default=False, help="Training from checkpoint or not")
     
     args = parser.parse_args()
+    
+    # Args preprocessing
+    args.save_dir = get_save_dir(args.save_dir, args.experiment)
+    
+    if args.augment:
+        print("Using data augmentation.")
+    
+    # Run training
     if experiments[args.experiment]["use_transformer"]:
         TrainTransformer(experiments=experiments, args=args)
     else:
@@ -188,9 +207,6 @@ def TrainTransformer(experiments, args):
         num_workers = 0
     else:
         num_workers = 4
-
-    if args.augment:
-        print("Using data augmentation...")
     
     # data loader
     if args.debug:
@@ -314,9 +330,6 @@ def TrainLSTMEncoder(experiments, args):
         num_workers = 0
     else:
         num_workers = 4
-
-    if args.augment:
-        print("Using data augmentation...")
 
     # data loader
     if args.debug:
