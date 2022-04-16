@@ -163,9 +163,9 @@ class Im2LatexModel(nn.Module):
             row_features = encoded[:, h, :, :] # [B, W', 512] - (batch, seq, feature)
 
             if self.experiment_dict["paper_emb"]:
-                # First dim is 2 since bidirectional
-                h0 = h0s[h].unsqueeze(0).repeat(2, 1).unsqueeze(1) # [2, 1, enc_rnn_h]
-                c0 = torch.zeros(2, 1, self.enc_rnn_h) # [2, 1, enc_rnn_h]
+                # First dimension is 2 since bidirectional
+                h0 = h0s[h].unsqueeze(0).unsqueeze(0).repeat(2, row_features.shape[0], 1) # [2, B, enc_rnn_h]
+                c0 = torch.zeros(2, row_features.shape[0], self.enc_rnn_h) # [2, B, enc_rnn_h]
 
                 output, h_n = self.row_encoder(row_features,
                     (h0.to(self.device), c0.to(self.device)))

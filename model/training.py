@@ -15,15 +15,16 @@ import code # DEBUG TOOL
 
 class Trainer(object):
     def __init__(self, optimizer, model, lr_scheduler,
-                 train_loader, val_loader, args, device,
-                 use_cuda=True, init_epoch=1, last_epoch=15,
-                 writer=None):
+                 train_loader, val_loader, batch_size,
+                 args, device, use_cuda=True, init_epoch=1,
+                 last_epoch=15, writer=None):
 
         self.optimizer = optimizer
         self.model = model
         self.lr_scheduler = lr_scheduler
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.batch_size = batch_size
         self.args = args
 
         self.device = device
@@ -59,13 +60,13 @@ class Trainer(object):
 
 class TransformerTrainer(Trainer):
     def __init__(self, optimizer, model, lr_scheduler,
-                 train_loader, val_loader, args, device,
-                 use_cuda=True, init_epoch=1, last_epoch=15,
-                 writer=None):
+                 train_loader, val_loader, args,
+                 device, use_cuda=True, init_epoch=1,
+                 last_epoch=15, writer=None):
 
         super().__init__(optimizer, model, lr_scheduler,
-            train_loader, val_loader, args, device,
-            use_cuda, init_epoch, last_epoch,
+            train_loader, val_loader, args.batch_size, args,
+            device, use_cuda, init_epoch, last_epoch,
             writer)
 
         self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
@@ -165,37 +166,41 @@ class TransformerTrainer(Trainer):
 
 class LSTMTrainer(Trainer):
     def __init__(self, optimizer, model, lr_scheduler,
-                 train_loader, val_loader, args, device,
-                 use_cuda=True, init_epoch=1, last_epoch=15,
-                 writer=None):
+                 train_loader, val_loader, args,
+                 device, use_cuda=True, init_epoch=1,
+                 last_epoch=15, writer=None):
 
         super().__init__(optimizer, model, lr_scheduler,
-            train_loader, val_loader, args, device,
-            use_cuda, init_epoch, last_epoch,
+            train_loader, val_loader, args.batch_size, args,
+            device, use_cuda, init_epoch, last_epoch,
             writer)
         
 
     def train(self):
+        DROPPED = 0
         mes = "Epoch {}, step:{}/{} {:.2f}%, Loss:{:.4f}, Perplexity:{:.4f}"
         while self.epoch <= self.last_epoch:
             print('Epoch: {}'.format(self.epoch))
             self.model.train()
             losses = 0.0
             for imgs, tgt4training, tgt4cal_loss in tqdm(self.train_loader):
-                print("HAPPENED")
-                step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
-                losses += step_loss
-                # log message
-                if self.step % self.args.print_freq == 0:
-                    avg_loss = losses / self.args.print_freq
-                    print(mes.format(
-                        self.epoch, self.step, len(self.train_loader),
-                        100 * self.step / len(self.train_loader),
-                        avg_loss,
-                        2**avg_loss
-                    ))
-                    losses = 0.0
-                    
+                if imgs.shape[0] == self.batch_size:
+                    step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
+                    losses += step_loss
+                    # log message
+                    if self.step % self.args.print_freq == 0:
+                        avg_loss = losses / self.args.print_freq
+                        print(mes.format(
+                            self.epoch, self.step, len(self.train_loader),
+                            100 * self.step / len(self.train_loader),
+                            avg_loss,
+                            2**avg_loss
+                        ))
+                        losses = 0.0
+                else:
+                    DROPPED += 1
+                    print("\n\nDROPPED {}\n\n".format(DROPPED))
+  
             # Calculate val loss
             val_loss = self.validate()
             self.lr_scheduler.step(val_loss)
@@ -237,15 +242,16 @@ class LSTMTrainer(Trainer):
         mes = "Epoch {}, validation average loss:{:.4f}, Perplexity:{:.4f}"
         with torch.no_grad():
             for imgs, tgt4training, tgt4cal_loss in self.val_loader:
-                imgs = imgs.to(self.device)
-                tgt4training = tgt4training.to(self.device)
-                tgt4cal_loss = tgt4cal_loss.to(self.device)
+                if imgs.shape[0] == self.batch_size:
+                    imgs = imgs.to(self.device)
+                    tgt4training = tgt4training.to(self.device)
+                    tgt4cal_loss = tgt4cal_loss.to(self.device)
 
-                epsilon = cal_epsilon(
-                    self.args.decay_k, self.total_step, self.args.sample_method)
-                logits = self.model(imgs, tgt4training, epsilon)
-                loss = cal_loss(logits, tgt4cal_loss)
-                val_total_loss += loss
+                    epsilon = cal_epsilon(
+                        self.args.decay_k, self.total_step, self.args.sample_method)
+                    logits = self.model(imgs, tgt4training, epsilon)
+                    loss = cal_loss(logits, tgt4cal_loss)
+                    val_total_loss += loss
             avg_loss = val_total_loss / len(self.val_loader)
             print(mes.format(
                 self.epoch, avg_loss, 2**avg_loss

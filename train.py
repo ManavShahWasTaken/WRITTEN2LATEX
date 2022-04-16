@@ -78,7 +78,8 @@ def main():
     }
     # experiment args
     parser.add_argument("experiment", type=int, help="Specify an experiment")
-    parser.add_argument("--debug", type=bool, default=False, help="debug mode")
+    parser.add_argument("--debug", action='store_true', default=False,
+                        help="Debugging mode using small dataset")
     
     
     # LSTM encoder model args
