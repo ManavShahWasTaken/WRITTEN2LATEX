@@ -57,6 +57,7 @@ class Trainer(object):
     
     
     def gc_check(self):
+        print("\n\n GC CHECK \n\n")
         for obj in gc.get_objects():
             try:
                 if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
