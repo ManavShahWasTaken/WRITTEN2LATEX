@@ -9,11 +9,7 @@ from utils import PAD_TOKEN
 
 from tqdm import tqdm
 
-import code # DEBUG TOOL
-
-import torch
-import torchvision.models as models
-from torch.profiler import profile, record_function, ProfilerActivity
+import code # Debug tool
 
 
 class Trainer(object):
@@ -57,7 +53,6 @@ class Trainer(object):
             'epoch': self.epoch,
             'args': self.args
         }, save_path)
-
 
 
 
