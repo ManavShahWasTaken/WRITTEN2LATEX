@@ -238,7 +238,7 @@ def TrainTransformer(experiments, args):
     elif experiments[args.experiment]['size'] == 'medium':
         print("Model type: medium")
         args.encoder_num_layers = 8
-        args.decoder_num_layers = 6
+        args.decoder_num_layers = 8
     elif experiments[args.experiment]['size'] == 'large':
         print("Model type: large")
         args.encoder_num_layers = 12
