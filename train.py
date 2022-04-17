@@ -88,7 +88,7 @@ def main():
         11: {"use_transformer": True, "size": "large", "use_patches": False},
         
         # Transformer, 8+8 layers, use patching
-        12: {"use_transformer": True, "size": "medium", "use_patches": True},
+        12: {"use_transformer": True, "size": "medium", "use_patches": True, "patch_size": 2},
     }
     # experiment args
     parser.add_argument("experiment", type=int, help="Specify an experiment")
