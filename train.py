@@ -233,7 +233,7 @@ def TrainTransformer(experiments, args):
     vocab_size = len(vocab)
     if experiments[args.experiment]['size'] == 'small':
         print("Model type: small")
-        args.encoder_num_layers = 6
+        args.encoder_num_layers = 4
         args.decoder_num_layers = 6
     elif experiments[args.experiment]['size'] == 'medium':
         print("Model type: medium")
