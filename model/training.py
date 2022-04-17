@@ -200,9 +200,9 @@ class LSTMTrainer(Trainer):
             losses = 0.0
             iter_count = 0
             for imgs, tgt4training, tgt4cal_loss in tqdm(self.train_loader):
+                iter_count += 1
                 if iter_count < 1220:
                     continue
-                iter_count += 1
                 if imgs.shape[0] == self.batch_size:
                     step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
                     losses += step_loss
