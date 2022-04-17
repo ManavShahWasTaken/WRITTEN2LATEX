@@ -85,7 +85,7 @@ def main():
         10: {"use_transformer": True, "size": "large", "use_patches": True, "patch_size": 2},
 
         # Transformer, 12+12 layers, use patching
-        11: {"use_transformer": True, "size": "large", "use_patches": False}
+        11: {"use_transformer": True, "size": "large", "use_patches": False},
         
         # Transformer, 8+8 layers, use patching
         12: {"use_transformer": True, "size": "medium", "use_patches": True},
