@@ -1,5 +1,6 @@
 from curses import keyname
 from os.path import join
+import math
 
 import torch
 from torch.utils.data import Dataset
@@ -32,22 +33,22 @@ class Im2LatexDataset(Dataset):
             pairs[i] = pair
         return pairs
 
-    """def _resize_img(self, img):
+    def _resize_img(self, img):
+        CUTOFF = 21600
         shape = img.shape
         
+        if shape[1]*shape[2] < CUTOFF:
+            return img
         
-        
-        cutoff = 
-        
-        percent =
+        percent = math.sqrt(CUTOFF / (shape[1]*shape[2]))
         
         resize = T.Resize([int(shape[i]*percent) for i in shape])
-        return resize(img)"""
+        return resize(img)
 
     def __getitem__(self, index):
         if self.args.augment:
             img, formula = self.pairs[index]
-            #img = self._resize_img(img)
+            img = self._resize_img(img)
             return (self.transforms(img), " ".join(formula.split()[:self.max_len]))
         else:
             return self.pairs[index]
