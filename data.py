@@ -42,7 +42,7 @@ class Im2LatexDataset(Dataset):
         
         percent = math.sqrt(CUTOFF / (shape[1]*shape[2]))
         
-        resize = T.Resize([int(shape[i]*percent) for i in shape])
+        resize = T.Resize((3, int(shape[1]*percent), int(shape[2]*percent)))
         return resize(img)
 
     def __getitem__(self, index):
