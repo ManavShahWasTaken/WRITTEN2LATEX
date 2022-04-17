@@ -108,7 +108,7 @@ class TransformerTrainer(Trainer):
             self.step = 0
 
     def train_step(self, imgs, tgt):
-        with profile(activities=[ProfilerActivity.CUDA], profile_memory=True, record_shapes=True) as prof:
+        with profile(activities=[ProfilerActivity.CPU], profile_memory=True, record_shapes=True) as prof:
             self.optimizer.zero_grad()
             
             imgs = imgs.to(self.device)
@@ -143,7 +143,7 @@ class TransformerTrainer(Trainer):
             clip_grad_norm_(self.model.parameters(), self.args.clip)
             self.optimizer.step()
         
-        print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
+        print(prof.key_averages().table(sort_by="cpu_memory_usage", row_limit=10))
         return output_loss              
 
     def calculate_loss(self, logits, target):
