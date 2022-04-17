@@ -54,31 +54,31 @@ def main():
     # new_emb: Embeddings applied to the output of the CNN or row encoder (depending on row_encoder)
     experiments = {        
         
-        # EXPERIMENT 1: Row encoder, paper_emb - CLOSEST TO THE PAPER
+        # Row encoder, paper_emb - CLOSEST TO THE PAPER
         1: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": False},
         
-        # EXPERIMENT 2: Transformer, 6+6 layers, use patching
+        # Transformer, 6+6 layers, use patching
         2: {"use_transformer": True, "size": "small", "use_patches": True, "patch_size":2},
         
-        # EXPERIMENT 3: Row encoder, new_emb
+        # Row encoder, new_emb
         3: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": True},
         
-        # EXPERIMENT 4: No row encoder, new_emb
+        # No row encoder, new_emb
         4: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": True},
         
-        # EXPERIMENT 5: Transformer, 12 layers, use patching
+        # Transformer, 12 layers, use patching
         5: {"use_transformer": True, "size": "small", "use_patches": False},
         
-        # EXPERIMENT 3: Row encoder, no embeddings
+        # Row encoder, no embeddings
         6: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": False},
         
         # Transformer, 8+8 layers, No patching
         7: {"use_transformer": True, "size": "medium", "use_patches": False},
         
-        # EXPERIMENT 6: Row encoder, paper_emb, new_emb
+        # Row encoder, paper_emb, new_emb
         8: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": True},
         
-        # EXPERIMENT 1: No row encoder, no embeddings
+        # No row encoder, no embeddings
         9: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": False},
        
         # Transformer, 12+12 layers, use patching
