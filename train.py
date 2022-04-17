@@ -33,7 +33,7 @@ def get_tensorboard_writer(experiment, verbose=True):
 
 def get_save_dir(dir, experiment, verbose=True):
     if dir == "./ckpts":
-        ret_dir = next_nonexistent_dir("./ckpts/experiment{}".format(experiment))
+        ret_dir = next_nonexistent_dir("./ckpts/ckpts_experiment{}".format(experiment))
     else:
         ret_dir = dir
     
@@ -66,13 +66,13 @@ def main():
         # No row encoder, new_emb
         4: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": True},
         
-        # Transformer, 12 layers, use patching
+        # Transformer, 6+6 layers, no patching
         5: {"use_transformer": True, "size": "small", "use_patches": False},
         
         # Row encoder, no embeddings
         6: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": False},
         
-        # Transformer, 8+8 layers, No patching
+        # Transformer, 8+8 layers, no patching
         7: {"use_transformer": True, "size": "medium", "use_patches": False},
         
         # Row encoder, paper_emb, new_emb
@@ -86,6 +86,9 @@ def main():
 
         # Transformer, 12+12 layers, use patching
         11: {"use_transformer": True, "size": "large", "use_patches": False}
+        
+        # Transformer, 8+8 layers, use patching
+        12: {"use_transformer": True, "size": "medium", "use_patches": True},
     }
     # experiment args
     parser.add_argument("experiment", type=int, help="Specify an experiment")
