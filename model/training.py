@@ -92,8 +92,6 @@ class TransformerTrainer(Trainer):
                     ))
                     losses = 0.0
                     
-                    print("imgs.shape", imgs.shape)
-                    
             # Calculate val loss
             val_loss = self.validate()
             self.lr_scheduler.step(val_loss)
@@ -212,7 +210,6 @@ class LSTMTrainer(Trainer):
                             2**avg_loss
                         ))
                         losses = 0.0
-                        print("imgs.shape", imgs.shape)
   
             # Calculate val loss
             val_loss = self.validate()
