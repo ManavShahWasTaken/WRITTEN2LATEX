@@ -201,7 +201,7 @@ class LSTMTrainer(Trainer):
             iter_count = 0
             for imgs, tgt4training, tgt4cal_loss in tqdm(self.train_loader):
                 iter_count += 1
-                if iter_count < 1220:
+                if iter_count < 400:
                     continue
                 if imgs.shape[0] == self.batch_size:
                     step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
@@ -216,6 +216,7 @@ class LSTMTrainer(Trainer):
                             2**avg_loss
                         ))
                         losses = 0.0
+                        print("imgs.shape", imgs.shape)
   
             # Calculate val loss
             val_loss = self.validate()

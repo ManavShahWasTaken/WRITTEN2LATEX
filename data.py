@@ -32,9 +32,22 @@ class Im2LatexDataset(Dataset):
             pairs[i] = pair
         return pairs
 
+    """def _resize_img(self, img):
+        shape = img.shape
+        
+        
+        
+        cutoff = 
+        
+        percent =
+        
+        resize = T.Resize([int(shape[i]*percent) for i in shape])
+        return resize(img)"""
+
     def __getitem__(self, index):
         if self.args.augment:
             img, formula = self.pairs[index]
+            #img = self._resize_img(img)
             return (self.transforms(img), " ".join(formula.split()[:self.max_len]))
         else:
             return self.pairs[index]
