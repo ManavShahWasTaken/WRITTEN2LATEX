@@ -43,13 +43,8 @@ class Im2LatexDataset(Dataset):
         percent = math.sqrt(CUTOFF / (shape[1]*shape[2]))
         new_shape = (int(shape[1]*percent), int(shape[2]*percent))
         
-        print("shape", shape)
-        print("new_shape", new_shape)
-        
         resize = T.Resize(new_shape)
-        img = resize(img)
-        print("img.shape", img.shape)
-        return img
+        return resize(img)
 
     def __getitem__(self, index):
         if self.args.augment:
