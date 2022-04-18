@@ -98,6 +98,8 @@ def main():
     
     
     # transformer model args
+    parser.add_argument("--weight_decay", type=float,
+                        default=0.01, help="Optimizer weight decay")
     parser.add_argument("--feat_size", type=int,
                         default=512, help="Feature_Embedding size")
     parser.add_argument("--encoder_nheads", type=int, default=8,
@@ -228,7 +230,7 @@ def TrainTransformer(experiments, args, writer):
     vocab_size = len(vocab)
     if experiments[args.experiment]['size'] == 'small':
         print("Model type: small")
-        args.encoder_num_layers = 4
+        args.encoder_num_layers = 6
         args.decoder_num_layers = 6
     elif experiments[args.experiment]['size'] == 'medium':
         print("Model type: medium")
@@ -272,7 +274,7 @@ def TrainTransformer(experiments, args, writer):
     # print("Model Summary:")
     # print(model)
     # construct optimizer
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     lr_scheduler = ReduceLROnPlateau(
         optimizer,
