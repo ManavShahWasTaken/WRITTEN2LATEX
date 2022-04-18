@@ -168,7 +168,7 @@ def main():
     writer, log_dir = get_tensorboard_writer(args.experiment)
     
     if args.save_dir == None:
-        args.save_dir = "./ckpts/" + log_dir[len("./runs/"):]
+        args.save_dir = "./ckpts/ckpts_" + log_dir[len("./runs/"):]
     
     print("\nCheckpoint directory:", args.save_dir, "\n")
     
