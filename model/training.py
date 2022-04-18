@@ -103,7 +103,7 @@ class TransformerTrainer(Trainer):
                 self.writer.add_scalar("val_loss", val_loss, self.epoch)
                 self.writer.add_scalar("val_perplexity", 2**val_loss, self.epoch)
             
-            self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
+            #self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
             self.epoch += 1
             self.step = 0
 
@@ -222,7 +222,7 @@ class LSTMTrainer(Trainer):
                 self.writer.add_scalar("val_loss", val_loss, self.epoch)
                 self.writer.add_scalar("val_perplexity", 2**val_loss, self.epoch)
             
-            self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
+            #self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
             self.epoch += 1
             self.step = 0
 
