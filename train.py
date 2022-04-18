@@ -27,20 +27,10 @@ def next_nonexistent_dir(d):
 
 def get_tensorboard_writer(experiment, verbose=True):
     log_dir = next_nonexistent_dir("./runs/experiment{}".format(experiment))
+    os.mkdir(log_dir)
     if verbose:
         print("\nLogging directory:", log_dir, "\n")
-    return SummaryWriter(log_dir=log_dir)
-
-def get_save_dir(dir, experiment, verbose=True):
-    if dir == "./ckpts":
-        ret_dir = next_nonexistent_dir("./ckpts/ckpts_experiment{}".format(experiment))
-    else:
-        ret_dir = dir
-    
-    if verbose:
-        print("\nCheckpoint directory:", ret_dir, "\n")
-    return ret_dir
-        
+    return SummaryWriter(log_dir=log_dir), log_dir
 
 
 def main():
@@ -162,7 +152,7 @@ def main():
     parser.add_argument("--clip", type=float, default=2.0,
                         help="The max gradient norm")
     parser.add_argument("--save_dir", type=str,
-                        default="./ckpts", help="The dir to save checkpoints")
+                        help="The dir to save checkpoints")
     parser.add_argument("--print_freq", type=int, default=100,
                         help="The frequency to print message")
     parser.add_argument("--seed", type=int, default=2020,
@@ -173,19 +163,24 @@ def main():
     args = parser.parse_args()
     
     # Args preprocessing
-    args.save_dir = get_save_dir(args.save_dir, args.experiment)
+    writer, log_dir = get_tensorboard_writer(args.experiment)
+    
+    if args.save_dir == None:
+        args.save_dir = "./ckpts/" + log_dir[len("./runs/"):]
+    
+    print("\nCheckpoint directory:", args.save_dir, "\n")
     
     if args.augment:
         print("Using data augmentation.")
     
     # Run training
     if experiments[args.experiment]["use_transformer"]:
-        TrainTransformer(experiments=experiments, args=args)
+        TrainTransformer(experiments, args, writer)
     else:
-        TrainLSTMEncoder(experiments=experiments, args=args)
+        TrainLSTMEncoder(experiments, args, writer)
 
    
-def TrainTransformer(experiments, args):
+def TrainTransformer(experiments, args, writer):
     max_epoch = args.epoches
     from_check_point = args.from_check_point
     if from_check_point:
@@ -288,8 +283,6 @@ def TrainTransformer(experiments, args):
         min_lr=args.min_lr
     )
     
-    writer = get_tensorboard_writer(args.experiment)
-    
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -313,7 +306,7 @@ def TrainTransformer(experiments, args):
 
 
 
-def TrainLSTMEncoder(experiments, args):
+def TrainLSTMEncoder(experiments, args, writer):
     max_epoch = args.epoches
     from_check_point = args.from_check_point
     if from_check_point:
@@ -380,8 +373,6 @@ def TrainLSTMEncoder(experiments, args):
         patience=args.lr_patience,
         verbose=True,
         min_lr=args.min_lr)
-
-    writer = get_tensorboard_writer(args.experiment)
 
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])
