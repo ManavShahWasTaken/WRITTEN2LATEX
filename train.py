@@ -98,9 +98,8 @@ def main():
     
     
     # transformer model args
-    
-    parser.add_argument("--use_row_embeddings", type=bool,
-                        default=True, help="weather or not to use row positional embeddings")
+    parser.add_argument("--use_row_embeddings", action='store_true', default=False,
+                        help="Whether or not to use row embedding")
     parser.add_argument("--weight_decay", type=float,
                         default=0.01, help="Optimizer weight decay")
     parser.add_argument("--feat_size", type=int,
@@ -231,6 +230,7 @@ def TrainTransformer(experiments, args, writer):
     # construct model
     print("Constructing model: ")
     vocab_size = len(vocab)
+    print("Using row embeddings: ", args.use_row_embeddings)
     if experiments[args.experiment]['size'] == 'small':
         print("Model type: small")
         args.encoder_num_layers = 6
