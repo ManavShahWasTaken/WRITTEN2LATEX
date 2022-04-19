@@ -31,14 +31,8 @@ def main():
                         default="./data/", help="The dataset's dir")
     parser.add_argument("--cuda", action='store_true',
                         default=True, help="Use cuda or not")
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--beam_size", type=int, default=5)
-    parser.add_argument("--result_path", type=str,
-                        default="./results/", help="The file to store result")
-    # parser.add_argument("--result_path", type=str,
-    #                     default="./results/result.txt", help="The file to store result")
-    # parser.add_argument("--ref_path", type=str,
-    #                     default="./results/ref.txt", help="The file to store reference")
+    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--beam_size", type=int, default=3)
     parser.add_argument("--max_len", type=int,
                         default=150, help="Max step of decoding")
     parser.add_argument("--split", type=str,
@@ -46,12 +40,12 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.isdir(args.result_path):
-        os.mkdir(args.result_path)
+    if not os.path.isdir(args.model_path):
+        print("MODEL NOT FOUND")
 
 
     # load checkpoint
-    checkpoint = torch.load(join(args.model_path))
+    checkpoint = torch.load(join(args.model_path, 'best_ckpt.pt'), map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
     model_args = checkpoint['args']
     
     # load vocab
@@ -81,28 +75,28 @@ def main():
         )
 
     model.load_state_dict(checkpoint['model_state_dict'])
-
-    result_file = open(os.path.join(args.result_path, 'predicted.txt'), 'w')
-    ref_file = open(os.path.join(args.result_path, 'reference.txt'), 'w')
+    result_path = os.path.join(args.model_path, 'predicted.txt')
+    ref_path = os.path.join(args.model_path, 'reference.txt')
+    result_file = open(result_path, 'wr')
+    ref_file = open(ref_path, 'wr')
 
     latex_producer = LatexProducerUpdated(
         model, vocab, max_len=args.max_len,
         use_cuda=use_cuda, beam_size=args.beam_size, )
 
     for imgs, (tgt4training, tgt4cal_loss) in tqdm(data_loader):
-        try:
-            reference = latex_producer._idx2formulas(tgt4cal_loss)
-            results = latex_producer(imgs)
-        except RuntimeError:
-            print('ERROR in evaluate')
-            break
+        reference = latex_producer._idx2formulas(tgt4cal_loss)
+        results = latex_producer(imgs)
+        # except RuntimeError:
+        #     print('ERROR in evaluate')
+        #     break
 
         result_file.write('\n'.join(results))
         ref_file.write('\n'.join(reference))
 
     result_file.close()
     ref_file.close()
-    score = score_files(args.result_path, args.ref_path)
+    score = score_files(result_path, ref_path)
     print("beam search result: ", score)
 
 

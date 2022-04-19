@@ -205,14 +205,14 @@ class Im2LatexModelTransformer(nn.Module):
         transformed = self.transformer.encode(cnn_encoded, src_mask=None, width=width) # encode with positional embeddings
         return transformed
     
-    def decode(self, target, memory, target_mask, target_padding_mask):
+    def decode(self, target, memory, target_mask=None, target_padding_mask=None):
         return self.transformer.decode(target=target, \
             memory=memory,
             target_mask=target_mask,
             target_padding_mask=target_padding_mask)
 
 
-    def forward(self, imgs, targets, target_mask, target_padding_mask):
+    def forward(self, imgs, targets, target_mask=None, target_padding_mask=None):
         memory = self.encode(imgs) # attention vectors from enconding
         logits = self.decode(target=targets, memory=memory, target_mask=target_mask, target_padding_mask=target_padding_mask)
         return logits 

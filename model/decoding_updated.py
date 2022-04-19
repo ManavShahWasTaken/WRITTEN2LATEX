@@ -262,7 +262,7 @@ class LatexProducerUpdated(object):
         last_predictions = last_predictions.unsqueeze(1)
         with torch.no_grad():
             logits = self.model.decode(last_predictions, memory)
-            logits = F.log_softmax(logits) 
+            logits = torch.squeeze(F.log_softmax(logits, dim=-1), dim=1)
 
         return (logits, state)
 
