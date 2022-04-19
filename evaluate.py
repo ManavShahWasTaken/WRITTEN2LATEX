@@ -24,6 +24,8 @@ def main():
                         help='type of model to evaluate')
 
     # model args
+    parser.add_argument("--augment", action='store_true',
+                        default=False, help="Perform data augmentation")
     parser.add_argument("--data_path", type=str,
                         default="./data/", help="The dataset's dir")
     parser.add_argument("--cuda", action='store_true',
