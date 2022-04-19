@@ -92,8 +92,6 @@ class TransformerTrainer(Trainer):
                     ))
                     losses = 0.0
                     
-                    print("imgs.shape", imgs.shape)
-                    
             # Calculate val loss
             val_loss = self.validate()
             self.lr_scheduler.step(val_loss)
@@ -105,7 +103,7 @@ class TransformerTrainer(Trainer):
                 self.writer.add_scalar("val_loss", val_loss, self.epoch)
                 self.writer.add_scalar("val_perplexity", 2**val_loss, self.epoch)
             
-            self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
+            #self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
             self.epoch += 1
             self.step = 0
 
@@ -198,11 +196,7 @@ class LSTMTrainer(Trainer):
             print('Epoch: {}'.format(self.epoch))
             self.model.train()
             losses = 0.0
-            iter_count = 0
             for imgs, tgt4training, tgt4cal_loss in tqdm(self.train_loader):
-                iter_count += 1
-                if iter_count < 1220:
-                    continue
                 if imgs.shape[0] == self.batch_size:
                     step_loss = self.train_step(imgs, tgt4training, tgt4cal_loss)
                     losses += step_loss
@@ -228,7 +222,7 @@ class LSTMTrainer(Trainer):
                 self.writer.add_scalar("val_loss", val_loss, self.epoch)
                 self.writer.add_scalar("val_perplexity", 2**val_loss, self.epoch)
             
-            self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
+            #self.save_model('ckpt-{}-{:.4f}'.format(self.epoch, val_loss))
             self.epoch += 1
             self.step = 0
 

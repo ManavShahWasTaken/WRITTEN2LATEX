@@ -27,20 +27,10 @@ def next_nonexistent_dir(d):
 
 def get_tensorboard_writer(experiment, verbose=True):
     log_dir = next_nonexistent_dir("./runs/experiment{}".format(experiment))
+    os.mkdir(log_dir)
     if verbose:
         print("\nLogging directory:", log_dir, "\n")
-    return SummaryWriter(log_dir=log_dir)
-
-def get_save_dir(dir, experiment, verbose=True):
-    if dir == "./ckpts":
-        ret_dir = next_nonexistent_dir("./ckpts/experiment{}".format(experiment))
-    else:
-        ret_dir = dir
-    
-    if verbose:
-        print("\nCheckpoint directory:", ret_dir, "\n")
-    return ret_dir
-        
+    return SummaryWriter(log_dir=log_dir), log_dir
 
 
 def main():
@@ -54,38 +44,41 @@ def main():
     # new_emb: Embeddings applied to the output of the CNN or row encoder (depending on row_encoder)
     experiments = {        
         
-        # EXPERIMENT 1: Row encoder, paper_emb - CLOSEST TO THE PAPER
+        # Row encoder, paper_emb - CLOSEST TO THE PAPER
         1: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": False},
         
-        # EXPERIMENT 2: Transformer, 6+6 layers, use patching
+        # Transformer, 6+6 layers, use patching
         2: {"use_transformer": True, "size": "small", "use_patches": True, "patch_size":2},
         
-        # EXPERIMENT 3: Row encoder, new_emb
+        # Row encoder, new_emb
         3: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": True},
         
-        # EXPERIMENT 4: No row encoder, new_emb
+        # No row encoder, new_emb
         4: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": True},
         
-        # EXPERIMENT 5: Transformer, 12 layers, use patching
+        # Transformer, 6+6 layers, no patching
         5: {"use_transformer": True, "size": "small", "use_patches": False},
         
-        # EXPERIMENT 3: Row encoder, no embeddings
+        # Row encoder, no embeddings
         6: {"use_transformer": False, "row_encoder": True, "paper_emb": False, "new_emb": False},
         
-        # Transformer, 8+8 layers, No patching
+        # Transformer, 8+8 layers, no patching
         7: {"use_transformer": True, "size": "medium", "use_patches": False},
         
-        # EXPERIMENT 6: Row encoder, paper_emb, new_emb
+        # Row encoder, paper_emb, new_emb
         8: {"use_transformer": False, "row_encoder": True, "paper_emb": True, "new_emb": True},
         
-        # EXPERIMENT 1: No row encoder, no embeddings
+        # No row encoder, no embeddings
         9: {"use_transformer": False, "row_encoder": False, "paper_emb": False, "new_emb": False},
        
         # Transformer, 12+12 layers, use patching
         10: {"use_transformer": True, "size": "large", "use_patches": True, "patch_size": 2},
 
         # Transformer, 12+12 layers, use patching
-        11: {"use_transformer": True, "size": "large", "use_patches": False}
+        11: {"use_transformer": True, "size": "large", "use_patches": False},
+        
+        # Transformer, 8+8 layers, use patching
+        12: {"use_transformer": True, "size": "medium", "use_patches": True, "patch_size": 2},
     }
     # experiment args
     parser.add_argument("experiment", type=int, help="Specify an experiment")
@@ -108,6 +101,8 @@ def main():
     
     parser.add_argument("--use_row_embeddings", type=bool,
                         default=True, help="weather or not to use row positional embeddings")
+    parser.add_argument("--weight_decay", type=float,
+                        default=0.01, help="Optimizer weight decay")
     parser.add_argument("--feat_size", type=int,
                         default=512, help="Feature_Embedding size")
     parser.add_argument("--encoder_nheads", type=int, default=8,
@@ -162,7 +157,7 @@ def main():
     parser.add_argument("--clip", type=float, default=2.0,
                         help="The max gradient norm")
     parser.add_argument("--save_dir", type=str,
-                        default="./ckpts", help="The dir to save checkpoints")
+                        help="The dir to save checkpoints")
     parser.add_argument("--print_freq", type=int, default=100,
                         help="The frequency to print message")
     parser.add_argument("--seed", type=int, default=2020,
@@ -173,19 +168,24 @@ def main():
     args = parser.parse_args()
     
     # Args preprocessing
-    args.save_dir = get_save_dir(args.save_dir, args.experiment)
+    writer, log_dir = get_tensorboard_writer(args.experiment)
+    
+    if args.save_dir == None:
+        args.save_dir = "./ckpts/ckpts_" + log_dir[len("./runs/"):]
+    
+    print("\nCheckpoint directory:", args.save_dir, "\n")
     
     if args.augment:
         print("Using data augmentation.")
     
     # Run training
     if experiments[args.experiment]["use_transformer"]:
-        TrainTransformer(experiments=experiments, args=args)
+        TrainTransformer(experiments, args, writer)
     else:
-        TrainLSTMEncoder(experiments=experiments, args=args)
+        TrainLSTMEncoder(experiments, args, writer)
 
    
-def TrainTransformer(experiments, args):
+def TrainTransformer(experiments, args, writer):
     max_epoch = args.epoches
     from_check_point = args.from_check_point
     if from_check_point:
@@ -237,7 +237,7 @@ def TrainTransformer(experiments, args):
         args.decoder_num_layers = 6
     elif experiments[args.experiment]['size'] == 'medium':
         print("Model type: medium")
-        args.encoder_num_layers = 6
+        args.encoder_num_layers = 8
         args.decoder_num_layers = 8
     elif experiments[args.experiment]['size'] == 'large':
         print("Model type: large")
@@ -277,7 +277,7 @@ def TrainTransformer(experiments, args):
     # print("Model Summary:")
     # print(model)
     # construct optimizer
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     lr_scheduler = ReduceLROnPlateau(
         optimizer,
@@ -287,8 +287,6 @@ def TrainTransformer(experiments, args):
         verbose=True,
         min_lr=args.min_lr
     )
-    
-    writer = get_tensorboard_writer(args.experiment)
     
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -313,7 +311,7 @@ def TrainTransformer(experiments, args):
 
 
 
-def TrainLSTMEncoder(experiments, args):
+def TrainLSTMEncoder(experiments, args, writer):
     max_epoch = args.epoches
     from_check_point = args.from_check_point
     if from_check_point:
@@ -380,8 +378,6 @@ def TrainLSTMEncoder(experiments, args):
         patience=args.lr_patience,
         verbose=True,
         min_lr=args.min_lr)
-
-    writer = get_tensorboard_writer(args.experiment)
 
     if from_check_point:
         model.load_state_dict(checkpoint['model_state_dict'])

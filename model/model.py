@@ -11,13 +11,7 @@ from .position_embedding import add_positional_features
 
 INIT = 1e-2
 
-
 def positionalencoding1d(d_model, length):
-    """
-    :param d_model: dimension of the model
-    :param length: length of positions
-    :return: length*d_model position matrix
-    """
     if d_model % 2 != 0:
         raise ValueError("Cannot use sin/cos positional encoding with "
                          "odd dim (got dim={:d})".format(d_model))
@@ -62,44 +56,6 @@ class Im2LatexModel(nn.Module):
             nn.Conv2d(256, enc_out_dim, 3, 1, 0),
             nn.ReLU()
         )
-
-        """
-        c:512, k:(3,3), s:(1,1), p:(0,0), bn -
-        c:512, k:(3,3), s:(1,1), p:(1,1), bn po:(1,2), s:(1,2), p:(0,0)
-        c:256, k:(3,3), s:(1,1), p:(1,1) po:(2,1), s:(2,1), p(0,0)
-        c:256, k:(3,3), s:(1,1), p:(1,1), bn -
-        c:128, k:(3,3), s:(1,1), p:(1,1) po:(2,2), s:(2,2), p:(0,0)
-        c:64, k:(3,3), s:(1,1), p:(1,1) po:(2,2), s:(2,2), p(2,2)
-        """
-
-        """
-        self.cnn_encoder = nn.Sequential(
-            nn.Conv2d(1, 512, kernel_size=(3, 3), stride=(1, 1), padding=(0, 0)),
-            nn.BatchNorm2d(512),
-            nn.ReLU(),
-
-            nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.MaxPool2d((1, 2), stride=(1, 2), padding=(0, 0)),
-            nn.BatchNorm2d(512),
-            nn.ReLU(),
-
-            nn.Conv2d(512, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.MaxPool2d((2, 1), stride=(2, 1), padding=(0, 0)),
-            nn.ReLU(),
-
-            nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-
-            nn.Conv2d(256, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.MaxPool2d((2, 2), stride=(2, 2), padding=(0, 0)),
-            nn.ReLU(),
-
-            nn.Conv2d(128, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.MaxPool2d((2, 2), stride=(2, 2), padding=(0, 0)),
-            nn.ReLU(),
-        )
-        """
 
         self.enc_rnn_h = enc_rnn_h
         self.row_encoder = nn.LSTM(enc_out_dim, enc_rnn_h, bidirectional=True, batch_first=True)
