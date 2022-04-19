@@ -25,7 +25,7 @@ def main():
 
     # model args
     parser.add_argument("--data_path", type=str,
-                        default="./data/images/", help="The dataset's dir")
+                        default="./data/", help="The dataset's dir")
     parser.add_argument("--cuda", action='store_true',
                         default=True, help="Use cuda or not")
     parser.add_argument("--batch_size", type=int, default=32)
@@ -52,20 +52,18 @@ def main():
     # load dataloader
     if args.model_type == 'transformer':
         data_loader = DataLoader(
-            Im2LatexDataset(args.data_path, args.split, args.max_len),
+            Im2LatexDataset(args.data_path,'test' , args),
             batch_size=args.batch_size,
             collate_fn=partial(collate_transformer_fn, vocab.sign2id),
-            pin_memory=True if use_cuda else False,
-            num_workers=4
+            pin_memory=True if use_cuda else False
         )
         model = Im2LatexModelTransformer(args)
     else:
         data_loader = DataLoader(
-            Im2LatexDataset(args.data_path, args.split, args.max_len),
+            Im2LatexDataset(args.data_path,'test' , args),
             batch_size=args.batch_size,
             collate_fn=partial(collate_fn, vocab.sign2id),
-            pin_memory=True if use_cuda else False,
-            num_workers=4
+            pin_memory=True if use_cuda else False
         )
         model = Im2LatexModel(
             len(vocab), model_args.emb_dim, model_args.dec_rnn_h,
