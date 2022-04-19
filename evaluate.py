@@ -46,8 +46,8 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.isdir(args.results_path):
-        os.mkdir(args.results_path)
+    if not os.path.isdir(args.result_path):
+        os.mkdir(args.result_path)
 
 
     # load checkpoint
