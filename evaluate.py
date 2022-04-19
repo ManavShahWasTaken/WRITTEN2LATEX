@@ -1,4 +1,5 @@
 # load checkpoint and evaluating
+import os
 from os.path import join
 from functools import partial
 import argparse
@@ -33,9 +34,11 @@ def main():
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--beam_size", type=int, default=5)
     parser.add_argument("--result_path", type=str,
-                        default="./results/result.txt", help="The file to store result")
-    parser.add_argument("--ref_path", type=str,
-                        default="./results/ref.txt", help="The file to store reference")
+                        default="./results/", help="The file to store result")
+    # parser.add_argument("--result_path", type=str,
+    #                     default="./results/result.txt", help="The file to store result")
+    # parser.add_argument("--ref_path", type=str,
+    #                     default="./results/ref.txt", help="The file to store reference")
     parser.add_argument("--max_len", type=int,
                         default=150, help="Max step of decoding")
     parser.add_argument("--split", type=str,
@@ -43,10 +46,14 @@ def main():
 
     args = parser.parse_args()
 
+    if not os.path.isdir(args.results_path):
+        os.mkdir(args.results_path)
+
+
     # load checkpoint
     checkpoint = torch.load(join(args.model_path))
     model_args = checkpoint['args']
-
+    
     # load vocab
     vocab = load_vocab(args.data_path)
     use_cuda = True if args.cuda and torch.cuda.is_available() else False
@@ -59,7 +66,7 @@ def main():
             collate_fn=partial(collate_transformer_fn, vocab.sign2id),
             pin_memory=True if use_cuda else False
         )
-        model = Im2LatexModelTransformer(args)
+        model = Im2LatexModelTransformer(model_args)
     else:
         data_loader = DataLoader(
             Im2LatexDataset(args.data_path,'test' , args),
@@ -75,8 +82,8 @@ def main():
 
     model.load_state_dict(checkpoint['model_state_dict'])
 
-    result_file = open(args.result_path, 'w')
-    ref_file = open(args.ref_path, 'w')
+    result_file = open(os.path.join(args.result_path, 'predicted.txt'), 'w')
+    ref_file = open(os.path.join(args.result_path, 'reference.txt'), 'w')
 
     latex_producer = LatexProducerUpdated(
         model, vocab, max_len=args.max_len,
