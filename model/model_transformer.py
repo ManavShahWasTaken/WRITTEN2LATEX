@@ -31,6 +31,7 @@ class PositionalEncoding(nn.Module):
     def __init__(self, config):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=config.encoder_dropout)
+        self.config = config
 
         position = torch.arange(config.encoder_max_sequence_length).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, config.feat_size, 2) * (-math.log(2000000.0) / config.feat_size))
@@ -44,7 +45,8 @@ class PositionalEncoding(nn.Module):
         Args:
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
-        if width is not None:
+
+        if width is not None and self.config.use_row_embeddings:
             assert x.shape[1]%width==0
             height = x.shape[1]//width
             row_pos_encoding = self.pe[:, :width, :].repeat(1, height, 1) # repeat encoding for each row

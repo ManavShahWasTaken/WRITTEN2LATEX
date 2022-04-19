@@ -105,6 +105,9 @@ def main():
     
     
     # transformer model args
+    
+    parser.add_argument("--use_row_embeddings", type=bool,
+                        default=True, help="weather or not to use row positional embeddings")
     parser.add_argument("--feat_size", type=int,
                         default=512, help="Feature_Embedding size")
     parser.add_argument("--encoder_nheads", type=int, default=8,
@@ -234,8 +237,8 @@ def TrainTransformer(experiments, args):
         args.decoder_num_layers = 6
     elif experiments[args.experiment]['size'] == 'medium':
         print("Model type: medium")
-        args.encoder_num_layers = 8
-        args.decoder_num_layers = 6
+        args.encoder_num_layers = 6
+        args.decoder_num_layers = 8
     elif experiments[args.experiment]['size'] == 'large':
         print("Model type: large")
         args.encoder_num_layers = 12
