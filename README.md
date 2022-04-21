@@ -1,6 +1,6 @@
 # WRITTEN2LATEX
 # Written2LaTeX
-A machine learning project aiming to turn handwritten equations into LaTeX using the [Handwritten Mathematical Expressions](https://www.kaggle.com/rtatman/handwritten-mathematical-expressions) dataset.
+A machine learning project aiming to turn handwritten equations into LaTeX.
 
 ## Repository set-up:
 
@@ -20,9 +20,6 @@ To download the dataset:
     -  `images`, `formulas.lst`, `test.lst`, `train.lst`, `val.lst`
 
 To preprocess the data:
- - `cd` to the root directory `Written2LaTeX`
- - ~~Preprocess the images~~:
-    - ~~`python src/im2markup/scripts/preprocessing/preprocess_images.py --input-dir data/images --output-dir data/images_processed`~~
     - Images have already been preprocessed
  - Preprocess the formulas:
     - `python scripts/preprocessing/preprocess_formulas.py --mode normalize --input-file data/formulas.lst --output-file data/formulas.norm.lst`
