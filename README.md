@@ -20,7 +20,7 @@ To download the dataset:
     -  `images`, `formulas.lst`, `test.lst`, `train.lst`, `val.lst`
 
 To preprocess the data:
-    - Images have already been preprocessed
+ - Images have already been preprocessed
  - Preprocess the formulas:
     - `python scripts/preprocessing/preprocess_formulas.py --mode normalize --input-file data/formulas.lst --output-file data/formulas.norm.lst`
  - Prepare train, validation and test files:
