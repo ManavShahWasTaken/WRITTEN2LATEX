@@ -51,7 +51,7 @@ def main():
     # load vocab
     vocab = load_vocab(args.data_path)
     use_cuda = True if args.cuda and torch.cuda.is_available() else False
-
+    device = torch.device("cuda" if use_cuda else "cpu")
     # load dataloader
     if args.model_type == 'transformer':
         data_loader = DataLoader(
@@ -69,30 +69,44 @@ def main():
             pin_memory=True if use_cuda else False
         )
         model = Im2LatexModel(
-            len(vocab), model_args.emb_dim, model_args.dec_rnn_h,
-            add_pos_feat=model_args.add_position_features,
-            dropout=model_args.dropout
+            model_args,
+            len(vocab), model_args.emb_dim,
+            model_args.enc_rnn_h, model_args.dec_rnn_h,
+            'device', dropout=model_args.dropout,
         )
 
     model.load_state_dict(checkpoint['model_state_dict'])
     result_path = os.path.join(args.model_path, 'predicted.txt')
     ref_path = os.path.join(args.model_path, 'reference.txt')
-    result_file = open(result_path, 'wr')
-    ref_file = open(ref_path, 'wr')
+    result_file = open(result_path, 'w')
+    ref_file = open(ref_path, 'w')
 
     latex_producer = LatexProducerUpdated(
         model, vocab, max_len=args.max_len,
         use_cuda=use_cuda, beam_size=args.beam_size, )
 
-    for imgs, (tgt4training, tgt4cal_loss) in tqdm(data_loader):
-        reference = latex_producer._idx2formulas(tgt4cal_loss)
-        results = latex_producer(imgs)
-        # except RuntimeError:
-        #     print('ERROR in evaluate')
-        #     break
+    if args.model_type == 'transformer':
+        for imgs, (tgt4training, tgt4cal_loss) in tqdm(data_loader):
+            reference = latex_producer._idx2formulas(tgt4cal_loss)
+            results = latex_producer(imgs)
+            # except RuntimeError:
+            #     print('ERROR in evaluate')
+            #     break
 
-        result_file.write('\n'.join(results))
-        ref_file.write('\n'.join(reference))
+            result_file.write('\n'.join(results))
+            ref_file.write('\n'.join(reference))
+    else:
+        for imgs, tgt4training, tgt4cal_loss in tqdm(data_loader):
+            reference = latex_producer._idx2formulas(tgt4cal_loss)
+            results = latex_producer(imgs)
+            # except RuntimeError:
+            #     print('ERROR in evaluate')
+            #     break
+
+            result_file.write('\n'.join(results))
+            ref_file.write('\n'.join(reference))
+
+
 
     result_file.close()
     ref_file.close()

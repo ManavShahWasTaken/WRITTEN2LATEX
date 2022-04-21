@@ -1,4 +1,5 @@
 
+from matplotlib.style import use
 import torch
 import torch.nn as nn
 from torch.nn import TransformerEncoderLayer, TransformerEncoder, TransformerDecoderLayer, TransformerDecoder
@@ -45,8 +46,12 @@ class PositionalEncoding(nn.Module):
         Args:
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
+        try:
+            use_emb = self.config.use_row_embeddings
+        except:
+            use_emb = True
 
-        if width is not None and self.config.use_row_embeddings:
+        if width is not None and use_emb:
             assert x.shape[1]%width==0
             height = x.shape[1]//width
             row_pos_encoding = self.pe[:, :width, :].repeat(1, height, 1) # repeat encoding for each row

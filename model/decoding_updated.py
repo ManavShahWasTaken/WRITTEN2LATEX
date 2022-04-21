@@ -31,15 +31,14 @@ class LatexProducerUpdated(object):
         """
         if self.beam_size == 1:
             if self.model_type == "transformer":
-                result = self._greedy_decoding_transformer(imgs)
+                results = self._greedy_decoding_transformer(imgs)
             else:
-                result = self._batch_beam_search_LSTM(imgs)
+                results = self._greedy_decoding_LSTM(imgs)
         else:
             if self.model_type == "transformer":
                 results = self._batch_beam_search_transformer(imgs)
             else:
                 results = self._batch_beam_search_LSTM(imgs)
-        
         return results
 
     def _greedy_decoding_LSTM(self, imgs):
@@ -70,13 +69,12 @@ class LatexProducerUpdated(object):
         imgs = imgs.to(self.device)
         self.model.eval()
 
-        memory = self.model(imgs)
+        memory = self.model.encode(imgs) # encode images
 
         batch_size = imgs.size(0)
         # storing decoding results
         formulas_idx = torch.ones(
             batch_size, self.max_len, device=self.device).long() * PAD_TOKEN
-        
         # first decoding step's input
         formulas_idx[:, 0] = START_TOKEN
         # tgt = torch.ones(
@@ -84,11 +82,14 @@ class LatexProducerUpdated(object):
         with torch.no_grad():
             for t in range(1, self.max_len):
                 y = formulas_idx[:, :t]
-                batch_logits = self.model.decode(y, memory)
-
+                batch_logits = self.model.decode(y, memory)[:, -1, :] # probs for next symbol
                 tgt = torch.argmax(batch_logits, dim=1, keepdim=True)
+                # import code
+                # code.interact(local=locals())
                 formulas_idx[:, t:t + 1] = tgt
+        
         results = self._idx2formulas(formulas_idx)
+        print(results)
         return results
 
     def _simple_beam_search_decoding(self, imgs):
@@ -260,6 +261,8 @@ class LatexProducerUpdated(object):
         memory = state['memory']
 
         last_predictions = last_predictions.unsqueeze(1)
+        # import code
+        # code.interact(local=locals())
         with torch.no_grad():
             logits = self.model.decode(last_predictions, memory)
             logits = torch.squeeze(F.log_softmax(logits, dim=-1), dim=1)

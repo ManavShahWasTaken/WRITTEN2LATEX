@@ -56,7 +56,7 @@ def collate_transformer_fn(sign2id, batch):
         w_max = max(w_max, image.shape[2])
         label = formula.split()
         formulas_train.append(['<s>'] + label)
-        formulas_loss.append(label + ['<s>'])
+        formulas_loss.append(label + ['</s>'])
         max_seq_length = max(max_seq_length, len(label)+1)
         imgs.append(image)
         
